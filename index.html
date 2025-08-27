@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teacher Management System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    // On page load or when changing themes, best to add inline in `head` to avoid FOUC
+    if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            'brand-primary': '#8D1D4B',      // Magenta Red for primary actions
+            'brand-navy': '#0B2042',      // Dark sidebar/bg, text
+            'brand-bg': '#F7F8FA',         // Light main background
+            'brand-text-dark': '#0B2042',  // Navy for headings
+            'brand-text-light': '#4B5563', // Dark Gray for subtitles/body
+            'brand-accent': '#AD9040',     // Yellow Gold for accents, success states
+            'brand-magenta': '#8D1D4B',
+            'brand-gold': '#AD9040',
+            'brand-dark-gray': '#4B5563',
+          },
+          fontFamily: {
+             sans: ['Inter', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@^19.1.1",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.1/",
+    "react/": "https://esm.sh/react@^19.1.1/",
+    "recharts": "https://esm.sh/recharts@^3.1.2",
+    "@google/genai": "https://esm.sh/@google/genai"
+  }
+}
+</script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
