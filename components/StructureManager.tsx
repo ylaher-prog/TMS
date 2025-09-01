@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PlusIcon, PencilIcon, TrashIcon, CheckIcon, XMarkIcon } from './Icons';
 import ConfirmationModal from './ConfirmationModal';
+import { FormInput } from './FormControls';
 
 interface StructureManagerProps {
   title: string;
@@ -55,13 +56,13 @@ const StructureManager: React.FC<StructureManagerProps> = ({ title, items, onUpd
         <div className="bg-white dark:bg-slate-800/50 p-6 rounded-xl shadow-sm flex flex-col h-full">
             <h3 className="text-lg font-semibold text-brand-text-dark dark:text-white mb-4">{title}</h3>
             <div className="flex gap-2 mb-4">
-                <input 
+                <FormInput 
                     type="text"
                     value={newItem}
                     onChange={(e) => setNewItem(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && handleAddItem()}
                     placeholder={`Add new ${itemNoun}...`}
-                    className="flex-grow min-w-0 border border-gray-300 dark:border-slate-600 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary bg-transparent"
+                    className="flex-grow min-w-0 !mt-0"
                 />
                 <button
                     onClick={handleAddItem}
@@ -81,13 +82,13 @@ const StructureManager: React.FC<StructureManagerProps> = ({ title, items, onUpd
                             <div key={index} className="flex justify-between items-center p-2 rounded-md hover:bg-gray-50 dark:hover:bg-slate-700/50">
                                 {editingIndex === index ? (
                                     <>
-                                        <input
+                                        <FormInput
                                             type="text"
                                             value={editingValue}
                                             onChange={(e) => setEditingValue(e.target.value)}
                                             onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
                                             autoFocus
-                                            className="flex-grow border border-gray-300 dark:border-slate-600 rounded-md px-2 py-1 text-sm bg-transparent"
+                                            className="flex-grow !mt-0"
                                         />
                                         <div className="flex items-center ml-2">
                                             <button onClick={handleSaveEdit} className="text-green-500 hover:text-green-700"><CheckIcon className="w-5 h-5"/></button>

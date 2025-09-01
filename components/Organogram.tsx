@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import type { Teacher, AcademicStructure, PhaseStructure, TeacherAllocation, ClassGroup } from '../types';
 import MultiSelectFilter from './MultiSelectFilter';
@@ -189,10 +190,10 @@ const Organogram: React.FC<OrganogramProps> = ({ teachers, academicStructure, ph
         <div className="bg-white dark:bg-slate-800/50 p-6 rounded-xl shadow-sm space-y-4">
             <h3 className="text-lg font-semibold text-brand-text-dark dark:text-white">Organizational Chart</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-3 border-y dark:border-slate-700">
-                <MultiSelectFilter label="Positions" options={allPositions} selected={filters.positions} onChange={(s) => handleFilterChange('positions', s)} />
-                <MultiSelectFilter label="Curricula" options={allCurricula} selected={filters.curricula} onChange={(s) => handleFilterChange('curricula', s)} />
-                <MultiSelectFilter label="Phases" options={allPhases} selected={filters.phases} onChange={(s) => handleFilterChange('phases', s)} />
-                <MultiSelectFilter label="Subjects" options={allSubjects} selected={filters.subjects} onChange={(s) => handleFilterChange('subjects', s)} />
+                <MultiSelectFilter label="Positions" options={allPositions.map(p => ({id: p, name: p}))} selected={filters.positions} onChange={(s) => handleFilterChange('positions', s)} />
+                <MultiSelectFilter label="Curricula" options={allCurricula.map(c => ({id: c, name: c}))} selected={filters.curricula} onChange={(s) => handleFilterChange('curricula', s)} />
+                <MultiSelectFilter label="Phases" options={allPhases.map(p => ({id: p, name: p}))} selected={filters.phases} onChange={(s) => handleFilterChange('phases', s)} />
+                <MultiSelectFilter label="Subjects" options={allSubjects.map(s => ({id: s, name: s}))} selected={filters.subjects} onChange={(s) => handleFilterChange('subjects', s)} />
             </div>
             <div className="overflow-auto p-4 bg-gray-50 dark:bg-slate-900/50 rounded-lg min-h-[60vh]">
                 {renderedTree && renderedTree.length > 0 ? (

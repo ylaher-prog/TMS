@@ -1,18 +1,22 @@
 import React, { useMemo, useState } from 'react';
-import type { Teacher, ProcurementRequest } from '../types';
+import type { Teacher, ProcurementRequest, Permission } from '../types';
 import { RequestStatus } from '../types';
 import StatusTag from './StatusTag';
 import { CheckIcon, HandThumbDownIcon, ArrowsUpDownIcon, ArrowUpIcon, ArrowDownIcon } from './Icons';
+import { TableFilterInput, TableFilterSelect } from './FormControls';
 
 interface ProcurementProps {
     teachers: Teacher[];
     procurementRequests: ProcurementRequest[];
     setProcurementRequests: React.Dispatch<React.SetStateAction<ProcurementRequest[]>>;
+    currentAcademicYear: string;
+    permissions: Permission[];
+    logAction: (action: string, details: string) => void;
 }
 
 type SortableKey = 'requester' | 'item' | 'amount' | 'requestDate' | 'status';
 
-const Procurement: React.FC<ProcurementProps> = ({ teachers, procurementRequests, setProcurementRequests }) => {
+const Procurement: React.FC<ProcurementProps> = ({ teachers, procurementRequests, setProcurementRequests, currentAcademicYear, permissions, logAction }) => {
     const [filters, setFilters] = useState({
         status: 'all',
         requester: '',
@@ -96,14 +100,14 @@ const Procurement: React.FC<ProcurementProps> = ({ teachers, procurementRequests
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                         </tr>
                         <tr>
-                            <th className="px-4 py-2"><input type="text" name="requester" placeholder="Filter..." value={filters.requester} onChange={handleFilterChange} className="w-full px-2 py-1 bg-gray-100 dark:bg-slate-700 border-gray-200 dark:border-slate-600 rounded-md text-sm" /></th>
-                            <th className="px-4 py-2"><input type="text" name="item" placeholder="Filter..." value={filters.item} onChange={handleFilterChange} className="w-full px-2 py-1 bg-gray-100 dark:bg-slate-700 border-gray-200 dark:border-slate-600 rounded-md text-sm" /></th>
+                            <th className="px-4 py-2"><TableFilterInput type="text" name="requester" placeholder="Filter..." value={filters.requester} onChange={handleFilterChange} /></th>
+                            <th className="px-4 py-2"><TableFilterInput type="text" name="item" placeholder="Filter..." value={filters.item} onChange={handleFilterChange} /></th>
                             <th className="px-4 py-2"></th>
                             <th className="px-4 py-2"></th>
                             <th className="px-4 py-2">
-                                <select name="status" value={filters.status} onChange={handleFilterChange} className="w-full px-2 py-1 bg-gray-100 dark:bg-slate-700 border-gray-200 dark:border-slate-600 rounded-md text-sm">
+                                <TableFilterSelect name="status" value={filters.status} onChange={handleFilterChange}>
                                     <option value="all">All</option>{Object.values(RequestStatus).map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
+                                </TableFilterSelect>
                             </th>
                             <th className="px-4 py-2"></th>
                         </tr>
@@ -120,7 +124,7 @@ const Procurement: React.FC<ProcurementProps> = ({ teachers, procurementRequests
                                         <div className="text-sm font-medium text-gray-900 dark:text-gray-200">{req.itemDescription}</div>
                                         <div className="text-sm text-gray-500 dark:text-gray-400">{req.category}</div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">${req.amount.toFixed(2)}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">R{req.amount.toFixed(2)}</td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{req.requestDate}</td>
                                     <td className="px-6 py-4 whitespace-nowrap"><StatusTag status={req.status} /></td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">

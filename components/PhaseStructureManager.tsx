@@ -55,7 +55,7 @@ const PhaseStructureManager: React.FC<PhaseStructureManagerProps> = ({ phaseStru
                             Define which grades and curricula fall under each academic phase and assign a Phase Head responsible for oversight.
                         </p>
                     </div>
-                    <button onClick={handleAdd} className="bg-brand-primary text-white px-4 py-2 text-sm rounded-lg flex items-center gap-2 font-medium hover:bg-rose-900 transition-colors mt-3 sm:mt-0">
+                    <button onClick={handleAdd} className="bg-brand-primary text-white px-4 py-2 text-sm rounded-md flex items-center gap-2 font-medium hover:bg-rose-900 transition-colors mt-3 sm:mt-0 flex-shrink-0">
                         <PlusIcon className="w-4 h-4" />
                         <span>Add Phase</span>
                     </button>

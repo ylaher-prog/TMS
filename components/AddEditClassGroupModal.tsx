@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Modal from './Modal';
+import { FormLabel, FormInput, FormSelect, Checkbox, Fieldset, ModalFooter, PrimaryButton } from './FormControls';
 import type { AcademicStructure, ClassGroup, Subject } from '../types';
 import { SubjectCategory } from '../types';
 
@@ -9,9 +10,10 @@ interface AddEditClassGroupModalProps {
   academicStructure: AcademicStructure;
   setClassGroups: React.Dispatch<React.SetStateAction<ClassGroup[]>>;
   existingGroup?: ClassGroup | null;
+  currentAcademicYear: string;
 }
 
-const AddEditClassGroupModal: React.FC<AddEditClassGroupModalProps> = ({ isOpen, onClose, academicStructure, setClassGroups, existingGroup }) => {
+const AddEditClassGroupModal: React.FC<AddEditClassGroupModalProps> = ({ isOpen, onClose, academicStructure, setClassGroups, existingGroup, currentAcademicYear }) => {
     
     const [formData, setFormData] = useState({
         name: '',
@@ -20,7 +22,7 @@ const AddEditClassGroupModal: React.FC<AddEditClassGroupModalProps> = ({ isOpen,
         mode: academicStructure.modes[0] || '',
         learnerCount: '',
         subjectIds: [] as string[],
-        academicYear: new Date().getFullYear().toString(),
+        academicYear: currentAcademicYear,
         addToTimetable: true,
     });
 
@@ -46,11 +48,11 @@ const AddEditClassGroupModal: React.FC<AddEditClassGroupModalProps> = ({ isOpen,
                 mode: academicStructure.modes[0] || '',
                 learnerCount: '',
                 subjectIds: [],
-                academicYear: new Date().getFullYear().toString(),
+                academicYear: currentAcademicYear,
                 addToTimetable: true,
             });
         }
-    }, [existingGroup, isOpen, academicStructure]);
+    }, [existingGroup, isOpen, academicStructure, currentAcademicYear]);
 
     const availableSubjects = useMemo(() => {
         if (!formData.grade || !formData.curriculum) return [];
@@ -107,12 +109,8 @@ const AddEditClassGroupModal: React.FC<AddEditClassGroupModalProps> = ({ isOpen,
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value, type } = e.target;
-        const isCheckbox = type === 'checkbox';
-        setFormData(prev => ({ 
-            ...prev, 
-            [name]: isCheckbox ? (e.target as HTMLInputElement).checked : value 
-        }));
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
     
     const validate = () => {
@@ -154,100 +152,95 @@ const AddEditClassGroupModal: React.FC<AddEditClassGroupModalProps> = ({ isOpen,
         onClose();
     };
 
-    const FormInput: React.FC<{ label: string; name: string; value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; error?: string; type?: string }> = 
-    ({ label, name, value, onChange, error, type = 'text' }) => (
-        <div>
-            <label htmlFor={name} className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
-            <input 
-                type={type} 
-                name={name} 
-                id={name} 
-                value={value} 
-                onChange={onChange} 
-                className="mt-1 block w-full border-gray-300 dark:border-slate-600 rounded-md shadow-sm p-2.5 focus:ring-brand-primary focus:border-brand-primary sm:text-base bg-transparent dark:text-gray-200" 
-            />
-            {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-        </div>
-    );
-
-    const FormSelect: React.FC<{ label: string; name: string; value: string; onChange: (e: React.ChangeEvent<HTMLSelectElement>) => void; error?: string; children: React.ReactNode }> = 
-    ({ label, name, value, onChange, error, children }) => (
-         <div>
-            <label htmlFor={name} className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</label>
-            <select 
-                name={name} 
-                id={name} 
-                value={value} 
-                onChange={onChange} 
-                className="mt-1 block w-full border-gray-300 dark:border-slate-600 rounded-md shadow-sm p-2.5 focus:ring-brand-primary focus:border-brand-primary sm:text-base bg-transparent dark:bg-slate-700 dark:text-gray-200"
-            >
-                {children}
-            </select>
-            {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-        </div>
-    );
-
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={existingGroup ? "Edit Class Group" : "Create Group"} size="lg">
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormInput label="Class Name / Identifier" name="name" value={formData.name} onChange={handleChange} error={errors.name} />
-            <FormInput label="Academic Year" name="academicYear" value={formData.academicYear} onChange={handleChange} error={errors.academicYear} type="text" />
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormSelect label="Curriculum" name="curriculum" value={formData.curriculum} onChange={handleChange} error={errors.curriculum}>
-                 {academicStructure.curricula.map(c => <option key={c} value={c}>{c}</option>)}
-            </FormSelect>
-            <FormSelect label="Grade" name="grade" value={formData.grade} onChange={handleChange} error={errors.grade}>
-                {academicStructure.grades.map(g => <option key={g} value={g}>{g}</option>)}
-            </FormSelect>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <FormInput label="Learner Count" name="learnerCount" value={formData.learnerCount} onChange={handleChange} error={errors.learnerCount} type="number" />
-            <FormSelect label="Mode" name="mode" value={formData.mode} onChange={handleChange} error={errors.mode}>
-                {academicStructure.modes.map(m => <option key={m} value={m}>{m}</option>)}
-            </FormSelect>
-        </div>
+    <Modal 
+        isOpen={isOpen} 
+        onClose={onClose} 
+        title={existingGroup ? "Edit Class Group" : "Create Group"} 
+        size="lg"
+        footer={
+            <ModalFooter onCancel={onClose}>
+                <PrimaryButton onClick={handleSubmit}>
+                    {existingGroup ? 'Save Changes' : 'Save Group'}
+                </PrimaryButton>
+            </ModalFooter>
+        }
+    >
+      <form onSubmit={handleSubmit} className="space-y-8">
+        <Fieldset legend="Group Details">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+                <div>
+                    <FormLabel htmlFor="name">Class Name / Identifier</FormLabel>
+                    <FormInput id="name" name="name" value={formData.name} onChange={handleChange} error={errors.name} />
+                    {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+                </div>
+                <div>
+                    <FormLabel htmlFor="academicYear">Academic Year</FormLabel>
+                    <FormInput id="academicYear" name="academicYear" value={formData.academicYear} onChange={handleChange} error={errors.academicYear} type="text" />
+                    {errors.academicYear && <p className="text-red-500 text-xs mt-1">{errors.academicYear}</p>}
+                </div>
+                <div>
+                    <FormLabel htmlFor="curriculum">Curriculum</FormLabel>
+                    <FormSelect id="curriculum" name="curriculum" value={formData.curriculum} onChange={handleChange}>
+                         {academicStructure.curricula.map(c => <option key={c} value={c}>{c}</option>)}
+                    </FormSelect>
+                    {errors.curriculum && <p className="text-red-500 text-xs mt-1">{errors.curriculum}</p>}
+                </div>
+                <div>
+                    <FormLabel htmlFor="grade">Grade</FormLabel>
+                    <FormSelect id="grade" name="grade" value={formData.grade} onChange={handleChange}>
+                        {academicStructure.grades.map(g => <option key={g} value={g}>{g}</option>)}
+                    </FormSelect>
+                     {errors.grade && <p className="text-red-500 text-xs mt-1">{errors.grade}</p>}
+                </div>
+                 <div>
+                    <FormLabel htmlFor="learnerCount">Learner Count</FormLabel>
+                    <FormInput id="learnerCount" name="learnerCount" value={formData.learnerCount} onChange={handleChange} type="number" error={errors.learnerCount} />
+                    {errors.learnerCount && <p className="text-red-500 text-xs mt-1">{errors.learnerCount}</p>}
+                </div>
+                <div>
+                    <FormLabel htmlFor="mode">Mode</FormLabel>
+                    <FormSelect id="mode" name="mode" value={formData.mode} onChange={handleChange}>
+                        {academicStructure.modes.map(m => <option key={m} value={m}>{m}</option>)}
+                    </FormSelect>
+                    {errors.mode && <p className="text-red-500 text-xs mt-1">{errors.mode}</p>}
+                </div>
+                <div className="md:col-span-2">
+                     <Checkbox 
+                        id="excludeFromTimetable" 
+                        name="addToTimetable" 
+                        label="Exclude this class group from timetable generation"
+                        checked={!formData.addToTimetable} 
+                        onChange={(e) => setFormData(prev => ({ ...prev, addToTimetable: !e.target.checked }))}
+                     />
+                </div>
+            </div>
+        </Fieldset>
         
-        <div className="pt-4 border-t dark:border-slate-700">
-             <label className="flex items-center space-x-3 text-sm cursor-pointer dark:text-gray-300 font-medium">
-                <input type="checkbox" name="addToTimetable" checked={formData.addToTimetable} onChange={handleChange} className="h-4 w-4 rounded border-gray-300 dark:border-slate-500 text-brand-primary focus:ring-brand-primary bg-transparent dark:bg-slate-700" />
-                <span>Add this class group to the Timetable module</span>
-            </label>
-        </div>
-
-        <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">Subjects</label>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Select the subjects to include in this group (filtered by selected grade and curriculum).</p>
-            <div className="mt-2 p-4 border border-gray-300 dark:border-slate-600 rounded-md max-h-60 overflow-y-auto space-y-4">
+        <Fieldset legend="Subjects">
+            <p className="text-xs text-gray-500 dark:text-gray-400 -mt-3 mb-3">Select the subjects to include in this group (filtered by selected grade and curriculum).</p>
+            <div className="p-4 border dark:border-slate-600 rounded-md max-h-60 overflow-y-auto space-y-4 bg-gray-50 dark:bg-slate-900/50">
                 {availableSubjects.length === 0 ? (
                      <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No subjects are configured for the selected grade and curriculum.</p>
                 ) : (
                     <>
-                        {/* Core Subjects */}
                         {subjectGroups.core.length > 0 && (
                             <div>
                                 <h4 className="font-semibold text-sm text-gray-800 dark:text-gray-200 mb-2">Core Subjects</h4>
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2">
                                     {subjectGroups.core.map(subject => (
-                                        <label key={subject.id} className="flex items-center space-x-3 text-sm cursor-pointer dark:text-gray-300">
-                                            <input type="checkbox" checked={formData.subjectIds.includes(subject.id)} onChange={() => handleSubjectToggle(subject.id)} className="h-4 w-4 rounded border-gray-300 dark:border-slate-500 text-brand-primary focus:ring-brand-primary bg-transparent dark:bg-slate-700" />
-                                            <span>{subject.name}</span>
-                                        </label>
+                                        <Checkbox key={subject.id} label={subject.name} checked={formData.subjectIds.includes(subject.id)} onChange={() => handleSubjectToggle(subject.id)} />
                                     ))}
                                 </div>
                             </div>
                         )}
 
-                        {/* Elective Subjects */}
                         {Object.keys(subjectGroups.groupedElectives).length > 0 && (
                              <div>
                                 <h4 className="font-semibold text-sm text-gray-800 dark:text-gray-200 mt-4 mb-2">Elective Subjects</h4>
                                 <div className="space-y-3">
                                     {Object.entries(subjectGroups.groupedElectives).map(([groupName, subjectsInGroup]) => (
-                                        <div key={groupName} className="p-3 bg-gray-50 dark:bg-slate-700/50 rounded-md">
+                                        <div key={groupName} className="p-3 bg-white dark:bg-slate-800/50 rounded-md border dark:border-slate-700">
                                             <h5 className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">{groupName}</h5>
                                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2">
                                                 {subjectsInGroup.length > 1 && groupName !== 'Ungrouped Electives' ? (
@@ -261,10 +254,7 @@ const AddEditClassGroupModal: React.FC<AddEditClassGroupModalProps> = ({ isOpen,
                                                 ) : (
                                                     // Checkboxes for ungrouped or single-item elective groups
                                                     subjectsInGroup.map(subject => (
-                                                        <label key={subject.id} className="flex items-center space-x-3 text-sm cursor-pointer dark:text-gray-300">
-                                                            <input type="checkbox" checked={formData.subjectIds.includes(subject.id)} onChange={() => handleSubjectToggle(subject.id)} className="h-4 w-4 rounded border-gray-300 text-brand-primary focus:ring-brand-primary" />
-                                                            <span>{subject.name}</span>
-                                                        </label>
+                                                        <Checkbox key={subject.id} label={subject.name} checked={formData.subjectIds.includes(subject.id)} onChange={() => handleSubjectToggle(subject.id)} />
                                                     ))
                                                 )}
                                             </div>
@@ -276,13 +266,7 @@ const AddEditClassGroupModal: React.FC<AddEditClassGroupModalProps> = ({ isOpen,
                     </>
                 )}
             </div>
-        </div>
-
-
-        <div className="flex justify-end gap-3 pt-4">
-            <button type="button" onClick={onClose} className="bg-gray-200 text-gray-800 px-5 py-2.5 rounded-md font-semibold hover:bg-gray-300 text-sm dark:bg-slate-600 dark:text-gray-200 dark:hover:bg-slate-500">Cancel</button>
-            <button type="submit" className="bg-brand-primary text-white px-5 py-2.5 rounded-md font-semibold hover:bg-rose-900 text-sm">{existingGroup ? 'Save Changes' : 'Save'}</button>
-        </div>
+        </Fieldset>
       </form>
     </Modal>
   );

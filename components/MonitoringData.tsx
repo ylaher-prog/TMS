@@ -1,10 +1,12 @@
+
 import React, { useMemo, useState } from 'react';
-import type { Teacher, Observation, AcademicStructure, PhaseStructure, MonitoringTemplate } from '../types';
+import type { Teacher, Observation, AcademicStructure, PhaseStructure, MonitoringTemplate, ClassGroup, TeacherAllocation } from '../types';
 import { MonitoringStatus, ObservationPriority } from '../types';
 import StatusTag from './StatusTag';
 import AddEditObservationModal from './AddEditObservationModal';
 import ConfirmationModal from './ConfirmationModal';
 import { PlusIcon, PencilIcon, TrashIcon, ArrowsUpDownIcon, ArrowUpIcon, ArrowDownIcon } from './Icons';
+import { TableFilterInput, TableFilterSelect } from './FormControls';
 
 interface MonitoringDataProps {
     teachers: Teacher[];
@@ -14,6 +16,9 @@ interface MonitoringDataProps {
     phaseStructures: PhaseStructure[];
     monitoringTemplates: MonitoringTemplate[];
     setMonitoringTemplates: React.Dispatch<React.SetStateAction<MonitoringTemplate[]>>;
+    currentAcademicYear: string;
+    classGroups: ClassGroup[];
+    allocations: TeacherAllocation[];
 }
 
 const getPriorityColor = (priority: ObservationPriority) => {
@@ -28,7 +33,7 @@ const getPriorityColor = (priority: ObservationPriority) => {
 type SortableKey = 'type' | 'educator' | 'phase' | 'date' | 'status' | 'priority';
 
 const MonitoringData: React.FC<MonitoringDataProps> = (props) => {
-    const { teachers, observations, setObservations, academicStructure, phaseStructures, monitoringTemplates } = props;
+    const { teachers, observations, setObservations, academicStructure, phaseStructures, monitoringTemplates, currentAcademicYear, classGroups, allocations } = props;
     
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [observationToEdit, setObservationToEdit] = useState<Observation | null>(null);
@@ -126,18 +131,18 @@ const MonitoringData: React.FC<MonitoringDataProps> = (props) => {
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                             </tr>
                             <tr>
-                                <th className="px-4 py-2">
-                                    <select name="type" value={filters.type} onChange={handleFilterChange} className="w-full px-2 py-1 bg-gray-100 dark:bg-slate-700 border-gray-200 dark:border-slate-600 rounded-md text-sm">
+                                <th className="px-4 py-2 space-y-1">
+                                    <TableFilterSelect name="type" value={filters.type} onChange={handleFilterChange}>
                                         <option value="all">All Types</option>{monitoringTemplates.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
-                                    </select>
-                                    <input type="text" name="educator" placeholder="Filter educator..." value={filters.educator} onChange={handleFilterChange} className="w-full mt-1 px-2 py-1 bg-gray-100 dark:bg-slate-700 border-gray-200 dark:border-slate-600 rounded-md text-sm" />
+                                    </TableFilterSelect>
+                                    <TableFilterInput type="text" name="educator" placeholder="Filter educator..." value={filters.educator} onChange={handleFilterChange} />
                                 </th>
                                 <th className="px-4 py-2">
-                                    <input type="text" name="phaseHead" placeholder="Filter head..." value={filters.phaseHead} onChange={handleFilterChange} className="w-full mt-1 px-2 py-1 bg-gray-100 dark:bg-slate-700 border-gray-200 dark:border-slate-600 rounded-md text-sm" />
+                                    <TableFilterInput type="text" name="phaseHead" placeholder="Filter head..." value={filters.phaseHead} onChange={handleFilterChange} />
                                 </th>
                                 <th className="px-4 py-2"></th>
-                                <th className="px-4 py-2"><select name="status" value={filters.status} onChange={handleFilterChange} className="w-full px-2 py-1 bg-gray-100 dark:bg-slate-700 border-gray-200 dark:border-slate-600 rounded-md text-sm"><option value="all">All</option>{Object.values(MonitoringStatus).map(s=><option key={s} value={s}>{s}</option>)}</select></th>
-                                <th className="px-4 py-2"><select name="priority" value={filters.priority} onChange={handleFilterChange} className="w-full px-2 py-1 bg-gray-100 dark:bg-slate-700 border-gray-200 dark:border-slate-600 rounded-md text-sm"><option value="all">All</option>{Object.values(ObservationPriority).map(p=><option key={p} value={p}>{p}</option>)}</select></th>
+                                <th className="px-4 py-2"><TableFilterSelect name="status" value={filters.status} onChange={handleFilterChange}><option value="all">All</option>{Object.values(MonitoringStatus).map(s=><option key={s} value={s}>{s}</option>)}</TableFilterSelect></th>
+                                <th className="px-4 py-2"><TableFilterSelect name="priority" value={filters.priority} onChange={handleFilterChange}><option value="all">All</option>{Object.values(ObservationPriority).map(p=><option key={p} value={p}>{p}</option>)}</TableFilterSelect></th>
                                 <th className="px-4 py-2"></th>
                             </tr>
                         </thead>
@@ -187,6 +192,9 @@ const MonitoringData: React.FC<MonitoringDataProps> = (props) => {
                     phaseStructures={phaseStructures}
                     existingObservation={observationToEdit}
                     monitoringTemplates={monitoringTemplates}
+                    currentAcademicYear={currentAcademicYear}
+                    classGroups={classGroups}
+                    allocations={allocations}
                 />
             )}
 

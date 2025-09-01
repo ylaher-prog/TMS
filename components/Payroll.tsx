@@ -1,17 +1,18 @@
-
 import React, { useState, useMemo } from 'react';
-import type { Teacher, SalaryInfo } from '../types';
+import type { Teacher, SalaryInfo, Permission } from '../types';
 import { PlusIcon, ArrowUpTrayIcon, ArrowsUpDownIcon, ArrowUpIcon, ArrowDownIcon } from './Icons';
 import BulkImportSalaryModal from './BulkImportSalaryModal';
 
 interface PayrollProps {
     teachers: Teacher[];
     setTeachers: React.Dispatch<React.SetStateAction<Teacher[]>>;
+    permissions: Permission[];
+    logAction: (action: string, details: string) => void;
 }
 
 type SortableKey = 'name' | 'employeeCode' | 'nettPay' | 'salaryCost';
 
-const Payroll: React.FC<PayrollProps> = ({ teachers, setTeachers }) => {
+const Payroll: React.FC<PayrollProps> = ({ teachers, setTeachers, logAction }) => {
     const [isImportModalOpen, setImportModalOpen] = useState(false);
     const [sortConfig, setSortConfig] = useState<{ key: SortableKey, direction: 'ascending' | 'descending' } | null>(null);
     const [searchTerm, setSearchTerm] = useState('');

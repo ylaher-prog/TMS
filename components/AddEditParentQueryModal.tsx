@@ -9,9 +9,10 @@ interface AddEditParentQueryModalProps {
   setQueries: React.Dispatch<React.SetStateAction<ParentQuery[]>>;
   existingQuery?: ParentQuery | null;
   teachers: Teacher[];
+  currentAcademicYear: string;
 }
 
-const AddEditParentQueryModal: React.FC<AddEditParentQueryModalProps> = ({ isOpen, onClose, setQueries, existingQuery, teachers }) => {
+const AddEditParentQueryModal: React.FC<AddEditParentQueryModalProps> = ({ isOpen, onClose, setQueries, existingQuery, teachers, currentAcademicYear }) => {
     
     const [formData, setFormData] = useState({
         parentName: '',
@@ -72,10 +73,11 @@ const AddEditParentQueryModal: React.FC<AddEditParentQueryModalProps> = ({ isOpe
             queryDetails: formData.queryDetails,
             status: formData.status,
             resolutionNotes: formData.resolutionNotes,
+            academicYear: existingQuery ? existingQuery.academicYear : currentAcademicYear,
         };
         
         if (existingQuery) {
-            setQueries(prev => prev.map(q => q.id === existingQuery.id ? { ...existingQuery, ...queryData } : q));
+            setQueries(prev => prev.map(q => q.id === existingQuery.id ? { ...q, ...queryData } : q));
         } else {
             const newQuery: ParentQuery = {
                 id: `pq-${Date.now()}`,

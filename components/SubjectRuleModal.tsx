@@ -87,11 +87,18 @@ const SubjectRuleModal: React.FC<SubjectRuleModalProps> = ({
             return;
         }
 
+        const selectedGroup = classGroups.find(cg => cg.id === classGroupId);
+        if (!selectedGroup) {
+            alert('Selected class group not found.');
+            return;
+        }
+
         const constraint: SubjectRuleConstraint = {
             id: existingConstraint?.id || `sr-${Date.now()}`,
             type: 'subject-rule',
             classGroupId,
             subjectId,
+            academicYear: selectedGroup.academicYear,
             rules: {
                 ...rules,
                 maxPeriodsPerDay: rules.maxPeriodsPerDay ? Number(rules.maxPeriodsPerDay) : null,

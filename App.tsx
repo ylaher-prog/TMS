@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useMemo } from 'react';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
@@ -11,8 +13,9 @@ import Parents from './components/Parents';
 import LoginPage from './components/LoginPage';
 import Payroll from './components/Payroll';
 import Timetable from './components/Timetable';
+import TeacherDashboard from './components/TeacherDashboard';
 
-import type { Page, Teacher, AcademicStructure, ClassGroup, TeacherAllocation, LeaveRequest, Observation, ProcurementRequest, TeacherWorkload, PhaseStructure, Subject, MonitoringTemplate, ParentQuery, AllocationSettings, GeneralSettings, TimeGrid, TimeConstraint, TimetableHistoryEntry, GeneratedTimetable, GeneratedSlot } from './types';
+import type { Page, Teacher, AcademicStructure, ClassGroup, TeacherAllocation, LeaveRequest, Observation, ProcurementRequest, TeacherWorkload, PhaseStructure, Subject, MonitoringTemplate, ParentQuery, AllocationSettings, GeneralSettings, TimeGrid, TimeConstraint, TimetableHistoryEntry, GeneratedTimetable, Permission, AuditLog } from './types';
 import { EmploymentStatus, SubjectCategory } from './types';
 import { 
   MOCK_ACADEMIC_STRUCTURE,
@@ -24,6 +27,7 @@ import {
   DEFAULT_TIME_GRIDS,
   TIME_GRID_COLORS,
 } from './constants';
+import { getUserPermissions, hasPermission } from './permissions';
 
 const LOCAL_STORAGE_KEY = 'qtms_app_data';
 
@@ -43,6 +47,8 @@ interface AppState {
   timeGrids: TimeGrid[];
   timeConstraints: TimeConstraint[];
   timetableHistory: TimetableHistoryEntry[];
+  auditLog: AuditLog[];
+  currentAcademicYear?: string;
   // adminUsers is now obsolete and will be migrated to teachers
   adminUsers?: any[];
   generatedTimetable?: any; // For migration
@@ -65,14 +71,43 @@ const App: React.FC = () => {
         if (serializedState === null) return null;
         
         let state: AppState = JSON.parse(serializedState);
+        const defaultYear = new Date().getFullYear().toString();
         
         // --- DATA MIGRATIONS ---
+
+        // Migration for academic years
+        if (!state.academicStructure.academicYears || state.academicStructure.academicYears.length === 0) {
+            state.academicStructure.academicYears = [defaultYear];
+        }
+
+        // Migration for year-specific data
+        const addYearField = (item: any) => {
+            if (item.academicYear) return item;
+             // Try to infer from class group for linked items
+            if (item.classGroupId && state.classGroups) {
+                const group = state.classGroups.find(cg => cg.id === item.classGroupId);
+                if (group && group.academicYear) {
+                    return { ...item, academicYear: group.academicYear };
+                }
+            }
+            return { ...item, academicYear: defaultYear };
+        };
+        
+        if (state.classGroups) state.classGroups = state.classGroups.map(item => ({...item, academicYear: item.academicYear || defaultYear}));
+        if (state.allocations) state.allocations = state.allocations.map(addYearField);
+        if (state.leaveRequests) state.leaveRequests = state.leaveRequests.map(item => ({...item, academicYear: item.academicYear || defaultYear}));
+        if (state.observations) state.observations = state.observations.map(item => ({...item, academicYear: item.academicYear || defaultYear}));
+        if (state.procurementRequests) state.procurementRequests = state.procurementRequests.map(item => ({...item, academicYear: item.academicYear || defaultYear}));
+        if (state.parentQueries) state.parentQueries = state.parentQueries.map(item => ({...item, academicYear: item.academicYear || defaultYear}));
+        if (state.timeConstraints) state.timeConstraints = state.timeConstraints.map(addYearField);
+        if (state.timetableHistory) state.timetableHistory = state.timetableHistory.map(item => ({...item, academicYear: item.academicYear || defaultYear}));
+        if (!state.auditLog) state.auditLog = [];
 
         // One-time migration from adminUsers to teachers
         if (state.adminUsers && state.adminUsers.length > 0) {
             const adminPosition: {id: string, name: string} = state.academicStructure.positions.find(p => p.name === 'Super Admin') || { id: 'pos-super-admin', name: 'Super Admin' };
             if (!state.academicStructure.positions.find(p => p.id === adminPosition.id)) {
-                state.academicStructure.positions.push(adminPosition);
+                state.academicStructure.positions.push(adminPosition as any);
             }
 
             const adminsAsTeachers: Teacher[] = state.adminUsers.map(admin => ({
@@ -230,6 +265,7 @@ const App: React.FC = () => {
                 timestamp: new Date().toISOString(),
                 timetable: newTimetable,
                 conflicts: [],
+                academicYear: defaultYear,
             }];
             delete state.generatedTimetable;
         } else if (!state.timetableHistory) {
@@ -264,8 +300,21 @@ const App: React.FC = () => {
   const [timeGrids, setTimeGrids] = useState<TimeGrid[]>(savedState?.timeGrids || DEFAULT_TIME_GRIDS);
   const [timeConstraints, setTimeConstraints] = useState<TimeConstraint[]>(savedState?.timeConstraints || []);
   const [timetableHistory, setTimetableHistory] = useState<TimetableHistoryEntry[]>(savedState?.timetableHistory || []);
+  const [auditLog, setAuditLog] = useState<AuditLog[]>(savedState?.auditLog || []);
+
+  const [currentAcademicYear, setCurrentAcademicYear] = useState<string>(() => {
+    const savedYear = savedState?.currentAcademicYear;
+    const years = savedState?.academicStructure?.academicYears || MOCK_ACADEMIC_STRUCTURE.academicYears;
+    if (savedYear && years.includes(savedYear)) {
+      return savedYear;
+    }
+    // Default to the latest year available
+    return years.sort().reverse()[0] || new Date().getFullYear().toString();
+  });
 
   const [currentUser, setCurrentUser] = useState<Teacher | null>(null);
+  const [currentUserPermissions, setCurrentUserPermissions] = useState<Permission[]>([]);
+
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
     if (localStorage.getItem('theme') === 'dark') {
@@ -274,12 +323,108 @@ const App: React.FC = () => {
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
+  // --- Scoped Data By User Role & Academic Year ---
+  const scopedData = useMemo(() => {
+    // 1. Filter everything by the selected academic year first
+    const yearClassGroups = classGroups.filter(cg => cg.academicYear === currentAcademicYear);
+    const yearClassGroupIds = new Set(yearClassGroups.map(cg => cg.id));
+    const yearAllocations = allocations.filter(a => yearClassGroupIds.has(a.classGroupId));
+    const yearLeaveRequests = leaveRequests.filter(lr => lr.academicYear === currentAcademicYear);
+    const yearObservations = observations.filter(o => o.academicYear === currentAcademicYear);
+    const yearProcurementRequests = procurementRequests.filter(pr => pr.academicYear === currentAcademicYear);
+    const yearParentQueries = parentQueries.filter(pq => pq.academicYear === currentAcademicYear);
+    const yearTimeConstraints = timeConstraints.filter(tc => tc.academicYear === currentAcademicYear);
+    const yearTimetableHistory = timetableHistory.filter(th => th.academicYear === currentAcademicYear);
+
+    if (!currentUser) {
+        return { visibleTeachers: [], classGroups: [], allocations: [], leaveRequests: [], observations: [], procurementRequests: [], parentQueries: [], timeConstraints: [], timetableHistory: [] };
+    }
+    
+    const userPosition = academicStructure.positions.find(p => p.id === currentUser.positionId);
+    if (userPosition?.name === 'Super Admin') {
+        return { visibleTeachers: teachers, classGroups: yearClassGroups, allocations: yearAllocations, leaveRequests: yearLeaveRequests, observations: yearObservations, procurementRequests: yearProcurementRequests, parentQueries: yearParentQueries, timeConstraints: yearTimeConstraints, timetableHistory: yearTimetableHistory };
+    }
+
+    // 2. Determine the set of teacher IDs the current user is allowed to see
+    const visibleTeacherIds = new Set<string>();
+    
+    // A teacher can always see themself
+    visibleTeacherIds.add(currentUser.id);
+
+    // If the user is a manager, find all their direct and indirect reports
+    const reportsMap = new Map<string, string[]>();
+    teachers.forEach(t => {
+        if (t.managerId) {
+            if (!reportsMap.has(t.managerId)) reportsMap.set(t.managerId, []);
+            reportsMap.get(t.managerId)!.push(t.id);
+        }
+    });
+
+    const getAllSubordinates = (managerId: string) => {
+        const subordinates = new Set<string>();
+        const queue = [managerId];
+        while (queue.length > 0) {
+            const currentManagerId = queue.shift()!;
+            const reports = reportsMap.get(currentManagerId) || [];
+            reports.forEach(reportId => {
+                subordinates.add(reportId);
+                queue.push(reportId);
+            });
+        }
+        return subordinates;
+    };
+    getAllSubordinates(currentUser.id).forEach(id => visibleTeacherIds.add(id));
+
+    // If the user is a Phase Head, find all teachers in their phase(s)
+    if (userPosition?.name === 'Phase Head') {
+        const managedPhases = phaseStructures.filter(p => p.phaseHeadId === currentUser.id);
+        if (managedPhases.length > 0) {
+            const managedGradeCurricula = new Set<string>();
+            managedPhases.forEach(p => {
+                p.grades.forEach(g => {
+                    p.curricula.forEach(c => {
+                        managedGradeCurricula.add(`${g}|${c}`);
+                    });
+                });
+            });
+
+            const phaseClassGroups = yearClassGroups.filter(cg => managedGradeCurricula.has(`${cg.grade}|${cg.curriculum}`));
+            const phaseClassGroupIds = new Set(phaseClassGroups.map(cg => cg.id));
+            const phaseAllocations = yearAllocations.filter(a => phaseClassGroupIds.has(a.classGroupId));
+            phaseAllocations.forEach(a => visibleTeacherIds.add(a.teacherId));
+        }
+    }
+
+    // 3. Filter all data based on the visibleTeacherIds
+    const visibleTeachers = teachers.filter(t => visibleTeacherIds.has(t.id));
+    const scopedAllocations = yearAllocations.filter(a => visibleTeacherIds.has(a.teacherId));
+    const visibleClassGroupIds = new Set(scopedAllocations.map(a => a.classGroupId));
+    const scopedClassGroups = yearClassGroups.filter(cg => visibleClassGroupIds.has(cg.id));
+    const scopedLeaveRequests = yearLeaveRequests.filter(lr => visibleTeacherIds.has(lr.teacherId));
+    const scopedObservations = yearObservations.filter(o => visibleTeacherIds.has(o.teacherId));
+    const scopedProcurementRequests = yearProcurementRequests.filter(pr => visibleTeacherIds.has(pr.requesterId));
+    const scopedParentQueries = yearParentQueries.filter(pq => visibleTeacherIds.has(pq.teacherId));
+
+    return {
+        visibleTeachers,
+        classGroups: scopedClassGroups,
+        allocations: scopedAllocations,
+        leaveRequests: scopedLeaveRequests,
+        observations: scopedObservations,
+        procurementRequests: scopedProcurementRequests,
+        parentQueries: scopedParentQueries,
+        timeConstraints: yearTimeConstraints, // Constraints are global for now
+        timetableHistory: yearTimetableHistory,
+    };
+  }, [currentUser, currentAcademicYear, teachers, classGroups, allocations, leaveRequests, observations, procurementRequests, parentQueries, timeConstraints, timetableHistory, academicStructure, phaseStructures]);
+
+
   const teacherWorkloads = useMemo(() => {
     const subjectMap = new Map(academicStructure.subjects.map(s => [s.id, s]));
-    const classGroupMap = new Map(classGroups.map(g => [g.id, g]));
+    const classGroupMap = new Map(scopedData.classGroups.map(g => [g.id, g]));
 
     const workloads = new Map<string, TeacherWorkload>();
-    teachers.forEach(teacher => {
+    scopedData.visibleTeachers.forEach(teacher => {
         workloads.set(teacher.id, {
             totalPeriods: 0,
             totalLearners: 0,
@@ -290,7 +435,7 @@ const App: React.FC = () => {
 
     const teacherClassGroupIds = new Map<string, Set<string>>();
 
-    allocations.forEach(alloc => {
+    scopedData.allocations.forEach(alloc => {
         const workload = workloads.get(alloc.teacherId);
         const subject = subjectMap.get(alloc.subjectId);
         const group = classGroupMap.get(alloc.classGroupId);
@@ -318,9 +463,8 @@ const App: React.FC = () => {
         workload.totalLearners = totalLearners;
     });
     
-
     return workloads;
-}, [teachers, allocations, academicStructure.subjects, classGroups]);
+}, [scopedData.visibleTeachers, scopedData.allocations, academicStructure.subjects, scopedData.classGroups]);
 
 
   useEffect(() => {
@@ -335,7 +479,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     try {
-        const stateToSave: Omit<AppState, 'adminUsers' | 'generatedTimetable'> = {
+        const stateToSave: AppState = {
             teachers,
             academicStructure,
             phaseStructures,
@@ -351,6 +495,8 @@ const App: React.FC = () => {
             timeGrids,
             timeConstraints,
             timetableHistory,
+            auditLog,
+            currentAcademicYear,
         };
         const serializedState = JSON.stringify(stateToSave);
         localStorage.setItem(LOCAL_STORAGE_KEY, serializedState);
@@ -361,10 +507,29 @@ const App: React.FC = () => {
             console.error("Could not save state to localStorage", err);
         }
     }
-  }, [teachers, academicStructure, phaseStructures, classGroups, allocations, leaveRequests, observations, procurementRequests, monitoringTemplates, parentQueries, allocationSettings, generalSettings, timeGrids, timeConstraints, timetableHistory]);
+  }, [teachers, academicStructure, phaseStructures, classGroups, allocations, leaveRequests, observations, procurementRequests, monitoringTemplates, parentQueries, allocationSettings, generalSettings, timeGrids, timeConstraints, timetableHistory, auditLog, currentAcademicYear]);
 
+  const logAction = (action: string, details: string) => {
+    if (!currentUser) return;
+    const newLog: AuditLog = {
+      id: `log-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      userId: currentUser.id,
+      userName: currentUser.fullName,
+      action,
+      details,
+    };
+    setAuditLog(prev => [newLog, ...prev].slice(0, 500)); // Keep last 500 logs
+  };
+
+  const handleLoginSuccess = (user: Teacher) => {
+    setCurrentUser(user);
+    setCurrentUserPermissions(getUserPermissions(user, academicStructure.positions));
+  };
+  
   const handleLogout = () => {
     setCurrentUser(null);
+    setCurrentUserPermissions([]);
     setActivePage('dashboard');
   };
 
@@ -374,34 +539,80 @@ const App: React.FC = () => {
   };
 
   if (!currentUser) {
-    return <LoginPage teachers={teachers} onLoginSuccess={setCurrentUser} />;
+    return <LoginPage teachers={teachers} onLoginSuccess={handleLoginSuccess} />;
   }
 
+  const userPosition = academicStructure.positions.find(p => p.id === currentUser.positionId);
+
+  if (userPosition?.name === 'Teacher') {
+    return (
+      <TeacherDashboard 
+          currentUser={currentUser}
+          onLogout={handleLogout}
+          workload={teacherWorkloads.get(currentUser.id)}
+          timetableHistory={scopedData.timetableHistory}
+          timeGrids={timeGrids}
+          academicStructure={{...academicStructure, monitoringTemplates}}
+          leaveRequests={scopedData.leaveRequests}
+          observations={scopedData.observations}
+          parentQueries={scopedData.parentQueries}
+          classGroups={scopedData.classGroups}
+          allocations={scopedData.allocations}
+      />
+    )
+  }
+  
+  const pagePermissions: Record<Page, Permission> = {
+      'dashboard': 'view:dashboard',
+      'academic-team': 'view:academic-team',
+      'allocations': 'view:allocations',
+      'timetable': 'view:timetable',
+      'payroll': 'view:payroll',
+      'leave': 'view:leave',
+      'observations': 'view:monitoring',
+      'procurement': 'view:procurement',
+      'parents': 'view:parents',
+      'settings': 'view:settings',
+  };
+
+  const canViewActivePage = hasPermission(currentUserPermissions, pagePermissions[activePage]);
+
   const renderContent = () => {
+    if (!canViewActivePage) {
+        return (
+            <div className="text-center p-12 bg-white dark:bg-slate-800/50 rounded-lg shadow-sm">
+                <h2 className="text-2xl font-bold text-red-600 dark:text-red-400">Access Denied</h2>
+                <p className="mt-2 text-brand-text-light dark:text-gray-400">You do not have permission to view this page. Please contact an administrator.</p>
+            </div>
+        )
+    }
+    
     switch (activePage) {
       case 'dashboard':
-        return <Dashboard teachers={teachers} workloads={teacherWorkloads}/>;
+        return <Dashboard teachers={scopedData.visibleTeachers} workloads={teacherWorkloads}/>;
       case 'academic-team':
         return <AcademicTeam 
-                  teachers={teachers} 
+                  teachers={scopedData.visibleTeachers} 
                   setTeachers={setTeachers} 
                   academicStructure={academicStructure} 
                   phaseStructures={phaseStructures} 
                   workloads={teacherWorkloads}
-                  allocations={allocations}
-                  classGroups={classGroups}
-                  leaveRequests={leaveRequests}
-                  observations={observations}
+                  allocations={scopedData.allocations}
+                  classGroups={scopedData.classGroups}
+                  leaveRequests={scopedData.leaveRequests}
+                  observations={scopedData.observations}
                   monitoringTemplates={monitoringTemplates}
                   timeGrids={timeGrids}
-                  timetableHistory={timetableHistory}
+                  timetableHistory={scopedData.timetableHistory}
+                  permissions={currentUserPermissions}
+                  logAction={logAction}
                 />;
       case 'allocations':
         return <Allocations 
-                  teachers={teachers} 
+                  teachers={scopedData.visibleTeachers} 
                   setTeachers={setTeachers}
-                  classGroups={classGroups} 
-                  allocations={allocations} 
+                  classGroups={scopedData.classGroups} 
+                  allocations={scopedData.allocations} 
                   setAllocations={setAllocations}
                   academicStructure={academicStructure}
                   phaseStructures={phaseStructures}
@@ -409,43 +620,56 @@ const App: React.FC = () => {
                   allocationSettings={allocationSettings}
                   generalSettings={generalSettings}
                   timeGrids={timeGrids}
-                  timetableHistory={timetableHistory}
+                  timetableHistory={scopedData.timetableHistory}
+                  permissions={currentUserPermissions}
+                  logAction={logAction}
                 />;
       case 'timetable':
         return <Timetable 
                   timeGrids={timeGrids}
                   setTimeGrids={setTimeGrids}
-                  timeConstraints={timeConstraints}
+                  timeConstraints={scopedData.timeConstraints}
                   setTimeConstraints={setTimeConstraints}
-                  timetableHistory={timetableHistory}
+                  timetableHistory={scopedData.timetableHistory}
                   setTimetableHistory={setTimetableHistory}
-                  teachers={teachers}
-                  classGroups={classGroups}
+                  teachers={scopedData.visibleTeachers}
+                  classGroups={scopedData.classGroups}
                   setClassGroups={setClassGroups}
-                  allocations={allocations}
+                  allocations={scopedData.allocations}
                   academicStructure={academicStructure}
+                  currentAcademicYear={currentAcademicYear}
+                  permissions={currentUserPermissions}
+                  logAction={logAction}
                />;
       case 'payroll':
-        return <Payroll teachers={teachers} setTeachers={setTeachers} />;
+        return <Payroll teachers={scopedData.visibleTeachers} setTeachers={setTeachers} permissions={currentUserPermissions} logAction={logAction} />;
       case 'leave':
-        return <Leave teachers={teachers} leaveRequests={leaveRequests} setLeaveRequests={setLeaveRequests} />;
+        return <Leave teachers={scopedData.visibleTeachers} leaveRequests={scopedData.leaveRequests} setLeaveRequests={setLeaveRequests} currentAcademicYear={currentAcademicYear} permissions={currentUserPermissions} logAction={logAction} />;
       case 'observations':
         return <Monitoring 
-                    teachers={teachers} 
-                    observations={observations} 
+                    teachers={scopedData.visibleTeachers} 
+                    observations={scopedData.observations} 
                     setObservations={setObservations}
                     academicStructure={academicStructure}
                     phaseStructures={phaseStructures}
                     monitoringTemplates={monitoringTemplates}
                     setMonitoringTemplates={setMonitoringTemplates}
+                    currentAcademicYear={currentAcademicYear}
+                    permissions={currentUserPermissions}
+                    classGroups={scopedData.classGroups}
+                    allocations={scopedData.allocations}
+                    logAction={logAction}
                 />;
       case 'procurement':
-        return <Procurement teachers={teachers} procurementRequests={procurementRequests} setProcurementRequests={setProcurementRequests} />;
+        return <Procurement teachers={scopedData.visibleTeachers} procurementRequests={scopedData.procurementRequests} setProcurementRequests={setProcurementRequests} currentAcademicYear={currentAcademicYear} permissions={currentUserPermissions} logAction={logAction} />;
       case 'parents':
         return <Parents 
-                 teachers={teachers}
-                 queries={parentQueries}
+                 teachers={scopedData.visibleTeachers}
+                 queries={scopedData.parentQueries}
                  setQueries={setParentQueries}
+                 currentAcademicYear={currentAcademicYear}
+                 permissions={currentUserPermissions}
+                 logAction={logAction}
                />;
       case 'settings':
         return (
@@ -464,10 +688,14 @@ const App: React.FC = () => {
             setGeneralSettings={setGeneralSettings}
             currentUser={currentUser}
             onResetState={handleResetState}
+            currentAcademicYear={currentAcademicYear}
+            permissions={currentUserPermissions}
+            auditLog={auditLog}
+            logAction={logAction}
           />
         );
       default:
-        return <Dashboard teachers={teachers} workloads={teacherWorkloads} />;
+        return <Dashboard teachers={scopedData.visibleTeachers} workloads={teacherWorkloads} />;
     }
   };
 
@@ -481,6 +709,9 @@ const App: React.FC = () => {
       isDarkMode={isDarkMode}
       setIsDarkMode={setIsDarkMode}
       academicStructure={academicStructure}
+      currentAcademicYear={currentAcademicYear}
+      setCurrentAcademicYear={setCurrentAcademicYear}
+      permissions={currentUserPermissions}
     >
       {renderContent()}
     </Layout>

@@ -3,6 +3,7 @@ import Modal from './Modal';
 import type { Teacher, AcademicStructure, TeacherWorkload, TeacherAllocation, ClassGroup, Subject, GeneralSettings, PhaseStructure, TimetableHistoryEntry, TimeGrid, GeneratedSlot } from '../types';
 import { GoogleGenAI } from '@google/genai';
 import { SparklesIcon } from './Icons';
+import { FormTextarea } from './FormControls';
 
 interface WorkloadReportModalProps {
     isOpen: boolean;
@@ -109,7 +110,6 @@ const WorkloadReportModal: React.FC<WorkloadReportModalProps> = (props) => {
             Object.values(generatedTimetable).forEach(classSchedule => {
                 Object.entries(classSchedule).forEach(([day, periods]) => {
                     Object.entries(periods).forEach(([periodId, slotsInPeriod]) => {
-                        // FIX: The slot is an array `GeneratedSlot[]`. Find the one for the current teacher.
                         if (slotsInPeriod) {
                             const teacherSlot = slotsInPeriod.find(s => s.teacherId === teacher.id);
                             if (teacherSlot) {
@@ -409,12 +409,11 @@ Focus on whether the workload is balanced, high, or low by comparing current num
                     </div>
                      <div>
                         <h4 className="font-semibold text-brand-navy dark:text-gray-200 mb-2">Manual Comments</h4>
-                        <textarea 
+                        <FormTextarea 
                             value={comments}
                             onChange={(e) => setComments(e.target.value)}
                             rows={8}
                             placeholder="Add any additional comments here or generate one with AI."
-                            className="w-full text-sm p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 focus:ring-brand-primary"
                         />
                         <div className="mt-2 flex items-center gap-2">
                             <button onClick={handleSaveComments} className="flex-1 text-sm font-semibold bg-brand-navy text-white py-1.5 rounded-md hover:bg-slate-700">

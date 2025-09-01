@@ -95,7 +95,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ academicStructure, onUp
                     title="Import subjects"
                 >
                      <ArrowUpTrayIcon className="w-4 h-4" />
-                     <span>Import Subjects</span>
+                     <span>Import</span>
                 </button>
                 <button
                     onClick={handleExportSubjects}
@@ -103,7 +103,7 @@ const SubjectManager: React.FC<SubjectManagerProps> = ({ academicStructure, onUp
                     title="Export subjects"
                 >
                      <ArrowDownTrayIcon className="w-4 h-4" />
-                     <span>Export Subjects</span>
+                     <span>Export</span>
                 </button>
                 <button
                     onClick={openAddModal}

@@ -1,7 +1,9 @@
+
+
 import React, { useMemo, useState, useEffect } from 'react';
-import type { Teacher, ClassGroup, TeacherAllocation, Subject, AcademicStructure, TeacherWorkload, AllocationSettings, GeneralSettings, PhaseStructure, TimeGrid, TimetableHistoryEntry } from '../types';
+import type { Teacher, ClassGroup, TeacherAllocation, Subject, AcademicStructure, TeacherWorkload, AllocationSettings, GeneralSettings, PhaseStructure, TimeGrid, TimetableHistoryEntry, Permission } from '../types';
 import { AllocationRole, AllocationStrategy, SubjectCategory } from '../types';
-import { SparklesIcon, ArrowPathIcon, ArrowDownTrayIcon, XMarkIcon, TrashIcon } from './Icons';
+import { SparklesIcon, ArrowDownTrayIcon, XMarkIcon, TrashIcon } from './Icons';
 import AllocationCell from './AllocationCell';
 import AllocationTeacherDashboard from './AllocationTeacherDashboard';
 import TabButton from './TabButton';
@@ -22,6 +24,8 @@ interface AllocationsProps {
     generalSettings: GeneralSettings;
     timeGrids: TimeGrid[];
     timetableHistory: TimetableHistoryEntry[];
+    permissions: Permission[];
+    logAction: (action: string, details: string) => void;
 }
 
 type AllocationsTab = 'builder' | 'data';
@@ -54,7 +58,7 @@ const getEffectiveLearnerCount = (subject: Subject, group: ClassGroup, allSubjec
 };
 
 const Allocations: React.FC<AllocationsProps> = (props) => {
-    const { teachers, setTeachers, classGroups, allocations, academicStructure, phaseStructures, setAllocations, teacherWorkloads, allocationSettings, generalSettings, timeGrids, timetableHistory } = props;
+    const { teachers, setTeachers, classGroups, allocations, academicStructure, phaseStructures, setAllocations, teacherWorkloads, allocationSettings, generalSettings, timeGrids, timetableHistory, permissions, logAction } = props;
     const [activeTab, setActiveTab] = useState<AllocationsTab>('builder');
     const [isResetAllModalOpen, setIsResetAllModalOpen] = useState(false);
     
@@ -314,7 +318,7 @@ const Allocations: React.FC<AllocationsProps> = (props) => {
                 </div>
                 <div className="flex flex-wrap items-center gap-2 mt-4 sm:mt-0">
                      <button onClick={handleResetFilters} className="px-3 py-1.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 flex items-center gap-2">
-                        <ArrowPathIcon className="h-4 w-4" />
+                        <XMarkIcon className="h-4 w-4" />
                         Reset View
                     </button>
                     <button onClick={handleClearVisible} className="px-3 py-1.5 text-sm font-semibold text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 flex items-center gap-2" title="Clear visible allocations">
@@ -332,10 +336,10 @@ const Allocations: React.FC<AllocationsProps> = (props) => {
                 </div>
             </div>
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2 mb-4 p-3 border-y dark:border-slate-700">
-                <MultiSelectFilter label="Curricula" options={curricula} selected={filters.curricula} onChange={(s) => handleFilterChange('curricula', s)} />
-                <MultiSelectFilter label="Grades" options={grades} selected={filters.grades} onChange={(s) => handleFilterChange('grades', s)} />
-                <MultiSelectFilter label="Modes" options={modes} selected={filters.modes} onChange={(s) => handleFilterChange('modes', s)} />
-                <MultiSelectFilter label="Subjects" options={subjects.map(s => s.name).sort()} selected={filters.subjects} onChange={(s) => handleFilterChange('subjects', s)} />
+                <MultiSelectFilter label="Curricula" options={curricula.map(c => ({ id: c, name: c }))} selected={filters.curricula} onChange={(s) => handleFilterChange('curricula', s)} />
+                <MultiSelectFilter label="Grades" options={grades.map(g => ({ id: g, name: g }))} selected={filters.grades} onChange={(s) => handleFilterChange('grades', s)} />
+                <MultiSelectFilter label="Modes" options={modes.map(m => ({ id: m, name: m }))} selected={filters.modes} onChange={(s) => handleFilterChange('modes', s)} />
+                <MultiSelectFilter label="Subjects" options={subjects.map(s => ({id: s.name, name: s.name})).sort((a,b) => a.name.localeCompare(b.name))} selected={filters.subjects} onChange={(s) => handleFilterChange('subjects', s)} />
             </div>
 
             <div className="overflow-x-auto border border-gray-200 dark:border-slate-700 rounded-lg">
@@ -377,6 +381,7 @@ const Allocations: React.FC<AllocationsProps> = (props) => {
                                                     onUpdate={handleUpdateAllocation}
                                                     teacherColorMap={teacherColorMap}
                                                     subjectMap={subjectMap}
+                                                    permissions={permissions}
                                                />
                                            ) : (
                                                <div className="h-full w-full bg-gray-50 dark:bg-slate-800/30"></div>

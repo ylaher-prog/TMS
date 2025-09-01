@@ -73,9 +73,10 @@ const LoginPage: React.FC<LoginPageProps> = ({ teachers, onLoginSuccess }) => {
                 </div>
             )}
             
-            <p className="text-center text-xs text-gray-500 dark:text-gray-400">
-                Hint: Use <strong>admin</strong> / <strong>password123</strong>
-            </p>
+            <div className="text-center text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 p-3 rounded-md">
+                <p>For this demo, you can log in as <strong>admin</strong>, <strong>fatima</strong> (Phase Head), or <strong>john</strong> (Teacher). The password for all users is <strong>password123</strong>.</p>
+                <p className="text-xs mt-1">Note: Resetting passwords in the UI is for demonstration only and won't change the login password.</p>
+            </div>
 
           <div>
             <button

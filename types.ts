@@ -1,3 +1,7 @@
+import type { Permission } from './permissions';
+
+export type { Permission };
+
 export enum EmploymentStatus {
   Probation = 'Probation',
   Permanent = 'Permanent',
@@ -10,6 +14,7 @@ export interface Position {
   id: string;
   name: string;
   reportsToId?: string;
+  permissions: Permission[];
 }
 
 export interface SalaryInfo {
@@ -104,6 +109,7 @@ export interface AcademicStructure {
   modes: string[];
   academicPeriods: string[];
   positions: Position[];
+  academicYears: string[];
 }
 
 export interface PhaseStructure {
@@ -165,6 +171,7 @@ export interface LeaveRequest {
     endDate: string;
     status: RequestStatus;
     reason: string;
+    academicYear: string;
 }
 
 // New Monitoring & Observations Types
@@ -196,6 +203,9 @@ export interface Observation {
     priority: ObservationPriority;
     formData: Record<string, any>; // Stores data from the dynamic form
     followUpDate?: string;
+    academicYear: string;
+    classGroupId?: string;
+    subjectId?: string;
 }
 
 
@@ -207,6 +217,7 @@ export interface ProcurementRequest {
     amount: number;
     requestDate: string;
     status: RequestStatus;
+    academicYear: string;
 }
 
 export interface TeacherWorkload {
@@ -258,6 +269,7 @@ export interface ParentQuery {
   status: MonitoringStatus;
   creationDate: string;
   resolutionNotes?: string;
+  academicYear: string;
 }
 
 // Timetabling
@@ -291,24 +303,28 @@ export type TimeConstraint =
         targetId: string;
         day: string;
         periodId: string;
+        academicYear: string;
       }
     | {
         id:string;
         type: 'teacher-max-periods-day';
         teacherId: string;
         maxPeriods: number;
+        academicYear: string;
       }
     | {
         id: string;
         type: 'teacher-max-consecutive';
         teacherId: string;
         maxPeriods: number;
+        academicYear: string;
       }
     | {
         id: string;
         type: 'subject-rule';
         subjectId: string;
         classGroupId: string;
+        academicYear: string;
         rules: {
             lessonDefinitions: LessonDefinition[];
             minDaysApart: number;
@@ -357,4 +373,17 @@ export interface TimetableHistoryEntry {
   timestamp: string;
   timetable: GeneratedTimetable;
   conflicts: Conflict[];
+  academicYear: string;
+  objectiveScore?: number;
+  solverSeed?: string;
+  solverVersion?: string;
+}
+
+export interface AuditLog {
+  id: string;
+  timestamp: string;
+  userId: string;
+  userName: string;
+  action: string;
+  details: string;
 }

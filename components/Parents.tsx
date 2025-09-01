@@ -1,20 +1,24 @@
 import React, { useState, useMemo } from 'react';
-import type { Teacher, ParentQuery } from '../types';
+import type { Teacher, ParentQuery, Permission } from '../types';
 import { MonitoringStatus, ParentQueryCategory } from '../types';
 import StatusTag from './StatusTag';
 import { PlusIcon, PencilIcon, TrashIcon, ArrowsUpDownIcon, ArrowUpIcon, ArrowDownIcon } from './Icons';
 import AddEditParentQueryModal from './AddEditParentQueryModal';
 import ConfirmationModal from './ConfirmationModal';
+import { TableFilterInput, TableFilterSelect } from './FormControls';
 
 interface ParentsProps {
     teachers: Teacher[];
     queries: ParentQuery[];
     setQueries: React.Dispatch<React.SetStateAction<ParentQuery[]>>;
+    currentAcademicYear: string;
+    permissions: Permission[];
+    logAction: (action: string, details: string) => void;
 }
 
 type SortableKey = 'parent' | 'teacher' | 'date' | 'category' | 'status';
 
-const Parents: React.FC<ParentsProps> = ({ teachers, queries, setQueries }) => {
+const Parents: React.FC<ParentsProps> = ({ teachers, queries, setQueries, currentAcademicYear, logAction }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [queryToEdit, setQueryToEdit] = useState<ParentQuery | null>(null);
     const [queryToDelete, setQueryToDelete] = useState<ParentQuery | null>(null);
@@ -111,18 +115,18 @@ const Parents: React.FC<ParentsProps> = ({ teachers, queries, setQueries }) => {
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                             </tr>
                             <tr>
-                                <th className="px-4 py-2"><input type="text" name="parentStudent" placeholder="Filter..." value={filters.parentStudent} onChange={handleFilterChange} className="w-full px-2 py-1 bg-gray-100 dark:bg-slate-700 border-gray-200 dark:border-slate-600 rounded-md text-sm" /></th>
-                                <th className="px-4 py-2"><input type="text" name="teacher" placeholder="Filter..." value={filters.teacher} onChange={handleFilterChange} className="w-full px-2 py-1 bg-gray-100 dark:bg-slate-700 border-gray-200 dark:border-slate-600 rounded-md text-sm" /></th>
-                                <th className="px-4 py-2"><input type="text" name="querySnippet" placeholder="Filter..." value={filters.querySnippet} onChange={handleFilterChange} className="w-full px-2 py-1 bg-gray-100 dark:bg-slate-700 border-gray-200 dark:border-slate-600 rounded-md text-sm" /></th>
+                                <th className="px-4 py-2"><TableFilterInput type="text" name="parentStudent" placeholder="Filter..." value={filters.parentStudent} onChange={handleFilterChange} /></th>
+                                <th className="px-4 py-2"><TableFilterInput type="text" name="teacher" placeholder="Filter..." value={filters.teacher} onChange={handleFilterChange} /></th>
+                                <th className="px-4 py-2"><TableFilterInput type="text" name="querySnippet" placeholder="Filter..." value={filters.querySnippet} onChange={handleFilterChange} /></th>
                                 <th className="px-4 py-2">
-                                    <select name="category" value={filters.category} onChange={handleFilterChange} className="w-full px-2 py-1 bg-gray-100 dark:bg-slate-700 border-gray-200 dark:border-slate-600 rounded-md text-sm">
+                                    <TableFilterSelect name="category" value={filters.category} onChange={handleFilterChange}>
                                         <option value="all">All</option>{Object.values(ParentQueryCategory).map(c=><option key={c} value={c}>{c}</option>)}
-                                    </select>
+                                    </TableFilterSelect>
                                 </th>
                                 <th className="px-4 py-2">
-                                    <select name="status" value={filters.status} onChange={handleFilterChange} className="w-full px-2 py-1 bg-gray-100 dark:bg-slate-700 border-gray-200 dark:border-slate-600 rounded-md text-sm">
+                                    <TableFilterSelect name="status" value={filters.status} onChange={handleFilterChange}>
                                         <option value="all">All</option>{Object.values(MonitoringStatus).map(s=><option key={s} value={s}>{s}</option>)}
-                                    </select>
+                                    </TableFilterSelect>
                                 </th>
                                 <th className="px-4 py-2"></th>
                             </tr>
@@ -174,6 +178,7 @@ const Parents: React.FC<ParentsProps> = ({ teachers, queries, setQueries }) => {
                     setQueries={setQueries}
                     teachers={teachers}
                     existingQuery={queryToEdit}
+                    currentAcademicYear={currentAcademicYear}
                 />
             )}
 

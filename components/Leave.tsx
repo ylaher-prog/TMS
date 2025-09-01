@@ -1,18 +1,22 @@
 import React, { useMemo, useState } from 'react';
-import type { Teacher, LeaveRequest } from '../types';
+import type { Teacher, LeaveRequest, Permission } from '../types';
 import { RequestStatus, LeaveType } from '../types';
 import StatusTag from './StatusTag';
 import { CheckIcon, HandThumbDownIcon, ArrowsUpDownIcon, ArrowUpIcon, ArrowDownIcon } from './Icons';
+import { TableFilterInput, TableFilterSelect } from './FormControls';
 
 interface LeaveProps {
     teachers: Teacher[];
     leaveRequests: LeaveRequest[];
     setLeaveRequests: React.Dispatch<React.SetStateAction<LeaveRequest[]>>;
+    currentAcademicYear: string;
+    permissions: Permission[];
+    logAction: (action: string, details: string) => void;
 }
 
 type SortableKey = 'teacher' | 'leaveType' | 'startDate' | 'status';
 
-const Leave: React.FC<LeaveProps> = ({ teachers, leaveRequests, setLeaveRequests }) => {
+const Leave: React.FC<LeaveProps> = ({ teachers, leaveRequests, setLeaveRequests, currentAcademicYear, permissions, logAction }) => {
     const [filters, setFilters] = useState({
         status: 'all',
         teacherName: '',
@@ -94,18 +98,18 @@ const Leave: React.FC<LeaveProps> = ({ teachers, leaveRequests, setLeaveRequests
                             <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                         </tr>
                         <tr>
-                            <th className="px-4 py-2"><input type="text" name="teacherName" placeholder="Filter..." value={filters.teacherName} onChange={handleFilterChange} className="w-full px-2 py-1 bg-gray-100 dark:bg-slate-700 border-gray-200 dark:border-slate-600 rounded-md text-sm" /></th>
+                            <th className="px-4 py-2"><TableFilterInput type="text" name="teacherName" placeholder="Filter..." value={filters.teacherName} onChange={handleFilterChange} /></th>
                             <th className="px-4 py-2">
-                                <select name="leaveType" value={filters.leaveType} onChange={handleFilterChange} className="w-full px-2 py-1 bg-gray-100 dark:bg-slate-700 border-gray-200 dark:border-slate-600 rounded-md text-sm">
+                                <TableFilterSelect name="leaveType" value={filters.leaveType} onChange={handleFilterChange}>
                                     <option value="all">All</option>{Object.values(LeaveType).map(lt => <option key={lt} value={lt}>{lt}</option>)}
-                                </select>
+                                </TableFilterSelect>
                             </th>
                             <th className="px-4 py-2"></th>
-                            <th className="px-4 py-2"><input type="text" name="reason" placeholder="Filter..." value={filters.reason} onChange={handleFilterChange} className="w-full px-2 py-1 bg-gray-100 dark:bg-slate-700 border-gray-200 dark:border-slate-600 rounded-md text-sm" /></th>
+                            <th className="px-4 py-2"><TableFilterInput type="text" name="reason" placeholder="Filter..." value={filters.reason} onChange={handleFilterChange} /></th>
                             <th className="px-4 py-2">
-                                <select name="status" value={filters.status} onChange={handleFilterChange} className="w-full px-2 py-1 bg-gray-100 dark:bg-slate-700 border-gray-200 dark:border-slate-600 rounded-md text-sm">
+                                <TableFilterSelect name="status" value={filters.status} onChange={handleFilterChange}>
                                     <option value="all">All</option>{Object.values(RequestStatus).map(s => <option key={s} value={s}>{s}</option>)}
-                                </select>
+                                </TableFilterSelect>
                             </th>
                             <th className="px-4 py-2"></th>
                         </tr>

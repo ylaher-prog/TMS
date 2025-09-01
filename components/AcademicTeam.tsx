@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { Teacher, AcademicStructure, TeacherWorkload, PhaseStructure, TeacherAllocation, ClassGroup, LeaveRequest, Observation, MonitoringTemplate, TimetableHistoryEntry, TimeGrid } from '../types';
+import type { Teacher, AcademicStructure, TeacherWorkload, PhaseStructure, TeacherAllocation, ClassGroup, LeaveRequest, Observation, MonitoringTemplate, TimetableHistoryEntry, TimeGrid, Permission } from '../types';
 import TeacherList from './TeacherList';
 import Organogram from './Organogram';
 import TabButton from './TabButton';
@@ -17,6 +17,8 @@ interface AcademicTeamProps {
     monitoringTemplates: MonitoringTemplate[];
     timeGrids: TimeGrid[];
     timetableHistory: TimetableHistoryEntry[];
+    permissions: Permission[];
+    logAction: (action: string, details: string) => void;
 }
 
 type AcademicTeamTab = 'list' | 'organogram';

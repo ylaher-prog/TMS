@@ -1,7 +1,9 @@
+
 import React, { useMemo } from 'react';
-import type { Teacher, ClassGroup, Subject, TeacherAllocation, TeacherWorkload } from '../types';
+import type { Teacher, ClassGroup, Subject, TeacherAllocation, TeacherWorkload, Permission } from '../types';
 import { SubjectCategory } from '../types';
 import { getSubjectPeriods } from '../App';
+import { hasPermission } from '../permissions';
 
 interface AllocationCellProps {
     classGroup: ClassGroup;
@@ -12,9 +14,10 @@ interface AllocationCellProps {
     onUpdate: (classGroupId: string, subjectId: string, teacherId: string) => void;
     teacherColorMap: Map<string, { dot: string; bg: string }>;
     subjectMap: Map<string, Subject>;
+    permissions: Permission[];
 }
 
-const AllocationCell: React.FC<AllocationCellProps> = ({ classGroup, subject, teachers, allocations, teacherWorkloads, onUpdate, teacherColorMap, subjectMap }) => {
+const AllocationCell: React.FC<AllocationCellProps> = ({ classGroup, subject, teachers, allocations, teacherWorkloads, onUpdate, teacherColorMap, subjectMap, permissions }) => {
     
     const currentAllocation = useMemo(() => {
         return allocations.find(a => a.classGroupId === classGroup.id && a.subjectId === subject.id);
@@ -60,8 +63,9 @@ const AllocationCell: React.FC<AllocationCellProps> = ({ classGroup, subject, te
             <select
                 value={currentAllocation?.teacherId || 'unassigned'}
                 onChange={handleChange}
-                className="w-full text-sm font-medium border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary bg-white dark:bg-slate-700 py-2 px-2.5"
+                className="w-full text-sm font-medium border-gray-300 dark:border-slate-600 rounded-md shadow-sm focus:ring-brand-primary focus:border-brand-primary bg-white dark:bg-slate-700 py-2 px-2.5 disabled:opacity-70 disabled:cursor-not-allowed"
                 title={assignedTeacher ? `Assigned to ${assignedTeacher.fullName}`: 'Assign a teacher'}
+                disabled={!hasPermission(permissions, 'edit:allocations')}
             >
                 <option value="unassigned">-- Unassigned --</option>
                 <optgroup label="Qualified Teachers">

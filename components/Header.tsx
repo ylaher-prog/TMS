@@ -11,10 +11,12 @@ interface HeaderProps {
     isDarkMode: boolean;
     setIsDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
     academicStructure: AcademicStructure;
+    currentAcademicYear: string;
+    setCurrentAcademicYear: (year: string) => void;
 }
 
 const Header: React.FC<HeaderProps> = (props) => {
-  const { pageTitle, currentUser, onLogout, setTeachers, isDarkMode, setIsDarkMode, academicStructure } = props;
+  const { pageTitle, currentUser, onLogout, setTeachers, isDarkMode, setIsDarkMode, academicStructure, currentAcademicYear, setCurrentAcademicYear } = props;
   const [isDropdownOpen, setDropdownOpen] = useState(false);
   const [isEditProfileOpen, setEditProfileOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -37,7 +39,24 @@ const Header: React.FC<HeaderProps> = (props) => {
   return (
     <>
       <header className="flex items-center justify-between h-20 px-6 md:px-8 bg-transparent flex-shrink-0">
-        <h2 className="text-2xl font-bold text-brand-text-dark dark:text-white">{pageTitle}</h2>
+        <div className="flex items-center gap-4">
+            <h2 className="text-2xl font-bold text-brand-text-dark dark:text-white">{pageTitle}</h2>
+            <div className="relative">
+                <select
+                    value={currentAcademicYear}
+                    onChange={(e) => setCurrentAcademicYear(e.target.value)}
+                    className="bg-gray-100 dark:bg-slate-700/80 border-transparent rounded-md text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-primary focus:bg-white dark:focus:bg-slate-600 py-2 pl-3 pr-8 appearance-none text-brand-text-dark dark:text-gray-200"
+                    aria-label="Select Academic Year"
+                >
+                    {(academicStructure.academicYears || []).sort().reverse().map(year => (
+                        <option key={year} value={year}>{year} Academic Year</option>
+                    ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
+                     <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                </div>
+            </div>
+        </div>
         <div className="flex items-center space-x-2 sm:space-x-4">
           <div className="relative hidden md:block">
             <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
