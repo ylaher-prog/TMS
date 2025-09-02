@@ -14,11 +14,13 @@ interface ParentsProps {
     currentAcademicYear: string;
     permissions: Permission[];
     logAction: (action: string, details: string) => void;
+    // FIX: Add missing sendNotification prop
+    sendNotification: (userId: string, type: 'newParentQuery' | 'parentQueryUpdate', data: any) => void;
 }
 
 type SortableKey = 'parent' | 'teacher' | 'date' | 'category' | 'status';
 
-const Parents: React.FC<ParentsProps> = ({ teachers, queries, setQueries, currentAcademicYear, logAction }) => {
+const Parents: React.FC<ParentsProps> = ({ teachers, queries, setQueries, currentAcademicYear, permissions, logAction, sendNotification }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [queryToEdit, setQueryToEdit] = useState<ParentQuery | null>(null);
     const [queryToDelete, setQueryToDelete] = useState<ParentQuery | null>(null);
@@ -63,7 +65,9 @@ const Parents: React.FC<ParentsProps> = ({ teachers, queries, setQueries, curren
 
     const requestSort = (key: SortableKey) => {
         let direction: 'ascending' | 'descending' = 'ascending';
-        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') direction = 'descending';
+        if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+            direction = 'descending';
+        }
         setSortConfig({ key, direction });
     };
 
@@ -81,25 +85,22 @@ const Parents: React.FC<ParentsProps> = ({ teachers, queries, setQueries, curren
         setQueryToEdit(query);
         setIsModalOpen(true);
     };
-    
+
     const handleDelete = () => {
         if (queryToDelete) {
             setQueries(prev => prev.filter(q => q.id !== queryToDelete.id));
             setQueryToDelete(null);
         }
     };
-
+    
     return (
         <>
             <div className="bg-white dark:bg-slate-800/50 p-6 rounded-xl shadow-sm">
                 <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
-                    <div>
-                        <h3 className="text-lg font-semibold text-brand-dark dark:text-white">Parent Queries</h3>
-                        <p className="text-sm text-brand-text-light dark:text-gray-400 mt-1">Log, track, and manage queries and complaints from parents.</p>
-                    </div>
-                    <button onClick={handleAdd} className="bg-brand-primary text-white px-4 py-2 text-sm rounded-lg flex items-center gap-2 font-medium hover:bg-rose-900 transition-colors mt-3 sm:mt-0">
+                    <h3 className="text-lg font-semibold text-brand-dark dark:text-white mb-4 sm:mb-0">Parent Queries</h3>
+                    <button onClick={handleAdd} className="bg-brand-primary text-white px-4 py-2 text-sm rounded-lg flex items-center gap-2 font-medium hover:bg-rose-900 transition-colors">
                         <PlusIcon className="w-4 h-4" />
-                        <span>Log New Query</span>
+                        <span>Log Query</span>
                     </button>
                 </div>
 
@@ -108,87 +109,70 @@ const Parents: React.FC<ParentsProps> = ({ teachers, queries, setQueries, curren
                         <thead className="bg-gray-50 dark:bg-slate-700/50">
                             <tr>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"><div className="flex items-center gap-1 cursor-pointer" onClick={() => requestSort('parent')}>Parent / Student {getSortIcon('parent')}</div></th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"><div className="flex items-center gap-1 cursor-pointer" onClick={() => requestSort('teacher')}>Teacher {getSortIcon('teacher')}</div></th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Query Snippet</th>
-                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"><div className="flex items-center gap-1 cursor-pointer" onClick={() => requestSort('date')}>Date / Category {getSortIcon('date')}</div></th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"><div className="flex items-center gap-1 cursor-pointer" onClick={() => requestSort('teacher')}>Assigned Teacher {getSortIcon('teacher')}</div></th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"><div className="flex items-center gap-1 cursor-pointer" onClick={() => requestSort('date')}>Date {getSortIcon('date')}</div></th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"><div className="flex items-center gap-1 cursor-pointer" onClick={() => requestSort('category')}>Category {getSortIcon('category')}</div></th>
+                                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Query</th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"><div className="flex items-center gap-1 cursor-pointer" onClick={() => requestSort('status')}>Status {getSortIcon('status')}</div></th>
                                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
                             </tr>
                             <tr>
                                 <th className="px-4 py-2"><TableFilterInput type="text" name="parentStudent" placeholder="Filter..." value={filters.parentStudent} onChange={handleFilterChange} /></th>
                                 <th className="px-4 py-2"><TableFilterInput type="text" name="teacher" placeholder="Filter..." value={filters.teacher} onChange={handleFilterChange} /></th>
+                                <th className="px-4 py-2"></th>
+                                <th className="px-4 py-2"><TableFilterSelect name="category" value={filters.category} onChange={handleFilterChange}><option value="all">All</option>{Object.values(ParentQueryCategory).map(c => <option key={c} value={c}>{c}</option>)}</TableFilterSelect></th>
                                 <th className="px-4 py-2"><TableFilterInput type="text" name="querySnippet" placeholder="Filter..." value={filters.querySnippet} onChange={handleFilterChange} /></th>
-                                <th className="px-4 py-2">
-                                    <TableFilterSelect name="category" value={filters.category} onChange={handleFilterChange}>
-                                        <option value="all">All</option>{Object.values(ParentQueryCategory).map(c=><option key={c} value={c}>{c}</option>)}
-                                    </TableFilterSelect>
-                                </th>
-                                <th className="px-4 py-2">
-                                    <TableFilterSelect name="status" value={filters.status} onChange={handleFilterChange}>
-                                        <option value="all">All</option>{Object.values(MonitoringStatus).map(s=><option key={s} value={s}>{s}</option>)}
-                                    </TableFilterSelect>
-                                </th>
+                                <th className="px-4 py-2"><TableFilterSelect name="status" value={filters.status} onChange={handleFilterChange}><option value="all">All</option>{Object.values(MonitoringStatus).map(s => <option key={s} value={s}>{s}</option>)}</TableFilterSelect></th>
                                 <th className="px-4 py-2"></th>
                             </tr>
                         </thead>
                         <tbody className="bg-white dark:bg-transparent divide-y divide-gray-200 dark:divide-slate-700">
-                            {sortedAndFilteredQueries.map((query) => (
-                                <tr key={query.id} className="hover:bg-gray-50 dark:hover:bg-slate-800">
+                            {sortedAndFilteredQueries.map((q) => (
+                                <tr key={q.id} className="hover:bg-gray-50 dark:hover:bg-slate-800">
                                     <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm font-medium text-gray-900 dark:text-gray-200">{query.parentName}</div>
-                                        <div className="text-sm text-gray-500 dark:text-gray-400">{query.studentName}</div>
+                                        <div className="text-sm font-medium text-gray-900 dark:text-gray-200">{q.parentName}</div>
+                                        <div className="text-sm text-gray-500 dark:text-gray-400">{q.studentName}</div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
-                                        {teacherMap.get(query.teacherId) || 'N/A'}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 max-w-sm truncate" title={query.queryDetails}>
-                                        {query.queryDetails}
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap">
-                                        <div className="text-sm text-gray-900 dark:text-gray-200">{query.creationDate}</div>
-                                        <div className="text-sm text-gray-500 dark:text-gray-400">{query.category}</div>
-                                    </td>
-                                    <td className="px-6 py-4 whitespace-nowrap"><StatusTag status={query.status} /></td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{teacherMap.get(q.teacherId)}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{q.creationDate}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-200">{q.category}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate" title={q.queryDetails}>{q.queryDetails}</td>
+                                    <td className="px-6 py-4 whitespace-nowrap"><StatusTag status={q.status} /></td>
                                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <div className="flex items-center space-x-3">
-                                            <button onClick={() => handleEdit(query)} className="text-brand-accent hover:text-amber-700 dark:text-amber-400 dark:hover:text-amber-300" title="Edit Query">
-                                                <PencilIcon className="h-5 w-5" />
-                                            </button>
-                                            <button onClick={() => setQueryToDelete(query)} className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300" title="Delete Query">
-                                                <TrashIcon className="h-5 w-5" />
-                                            </button>
+                                            <button onClick={() => handleEdit(q)} className="text-brand-accent hover:text-amber-700"><PencilIcon className="h-5 w-5"/></button>
+                                            <button onClick={() => setQueryToDelete(q)} className="text-red-600 hover:text-red-800"><TrashIcon className="h-5 w-5"/></button>
                                         </div>
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     </table>
-                    {sortedAndFilteredQueries.length === 0 && (
+                     {sortedAndFilteredQueries.length === 0 && (
                         <div className="text-center py-10 text-gray-500 dark:text-gray-400">
-                            No parent queries match the current filters.
+                            No queries match the current filters.
                         </div>
                     )}
                 </div>
             </div>
             
             {isModalOpen && (
-                <AddEditParentQueryModal 
+                <AddEditParentQueryModal
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}
                     setQueries={setQueries}
-                    teachers={teachers}
                     existingQuery={queryToEdit}
+                    teachers={teachers}
                     currentAcademicYear={currentAcademicYear}
                 />
             )}
-
             {queryToDelete && (
                 <ConfirmationModal
                     isOpen={!!queryToDelete}
                     onClose={() => setQueryToDelete(null)}
                     onConfirm={handleDelete}
                     title="Delete Parent Query"
-                    message={`Are you sure you want to delete this query from ${queryToDelete.parentName}? This action cannot be undone.`}
+                    message={`Are you sure you want to delete the query from ${queryToDelete.parentName}? This action cannot be undone.`}
                 />
             )}
         </>

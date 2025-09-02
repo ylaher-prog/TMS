@@ -77,7 +77,7 @@ const StructureManager: React.FC<StructureManagerProps> = ({ title, items, onUpd
                 {items.length === 0 ? (
                     <p className="text-sm text-brand-text-light dark:text-gray-400 text-center py-4">No {itemNoun}s added yet.</p>
                 ) : (
-                    <div className="w-full space-y-2 max-h-40 overflow-y-auto pr-2">
+                    <div className="w-full space-y-2 pr-2">
                         {items.map((item, index) => (
                             <div key={index} className="flex justify-between items-center p-2 rounded-md hover:bg-gray-50 dark:hover:bg-slate-700/50">
                                 {editingIndex === index ? (

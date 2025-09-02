@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Teacher, AcademicStructure, ClassGroup, Position, PhaseStructure, Subject, AllocationSettings, GeneralSettings, Permission, AuditLog } from '../types';
 import { PlusIcon, ArrowUpTrayIcon, PencilIcon, TrashIcon, ArrowDownTrayIcon, CheckIcon, XMarkIcon, ArrowsUpDownIcon, ArrowUpIcon, ArrowDownIcon } from './Icons';
@@ -11,7 +12,7 @@ import ConfirmationModal from './ConfirmationModal';
 import SubjectManager from './SubjectManager';
 import BulkImportClassGroupsModal from './BulkImportClassGroupsModal';
 import PhaseStructureManager from './PhaseStructureManager';
-import { getSubjectPeriods } from '../App';
+import { getSubjectPeriods } from '../utils';
 import AllocationSettingsManager from './AllocationSettingsManager';
 import EmailSettingsManager from './EmailSettingsManager';
 import TabButton from './TabButton';

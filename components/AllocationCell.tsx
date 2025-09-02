@@ -1,8 +1,10 @@
 
+
+
 import React, { useMemo } from 'react';
 import type { Teacher, ClassGroup, Subject, TeacherAllocation, TeacherWorkload, Permission } from '../types';
 import { SubjectCategory } from '../types';
-import { getSubjectPeriods } from '../App';
+import { getSubjectPeriods, getEffectiveLearnerCount } from '../utils';
 import { hasPermission } from '../permissions';
 
 interface AllocationCellProps {
@@ -44,19 +46,7 @@ const AllocationCell: React.FC<AllocationCellProps> = ({ classGroup, subject, te
 
     const actualPeriods = getSubjectPeriods(subject, classGroup.curriculum, classGroup.grade, classGroup.mode);
 
-    const effectiveLearners = useMemo(() => {
-        if (subject.category === SubjectCategory.Elective && subject.electiveGroup) {
-            const competingSubjects = classGroup.subjectIds
-                .map(id => subjectMap.get(id))
-                .filter((s): s is Subject => !!s)
-                .filter(s => s.category === SubjectCategory.Elective && s.electiveGroup === subject.electiveGroup);
-
-            if (competingSubjects.length > 1) {
-                return Math.ceil(classGroup.learnerCount / competingSubjects.length);
-            }
-        }
-        return classGroup.learnerCount;
-    }, [subject, classGroup, subjectMap]);
+    const effectiveLearners = getEffectiveLearnerCount(subject, classGroup, subjectMap);
 
     return (
         <div className={`p-1.5 h-full w-full rounded-md transition-all duration-200 ${cellBg}`}>

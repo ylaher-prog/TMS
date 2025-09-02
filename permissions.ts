@@ -1,8 +1,11 @@
+
 import type { Teacher, Position } from './types';
 
 export type Permission = 
     // Dashboard
     | 'view:dashboard'
+    | 'view:dashboard-phase-filter'
+    | 'view:header-phase-filter'
     // Academic Team
     | 'view:academic-team'
     | 'view:teacher-report'
@@ -25,6 +28,11 @@ export type Permission =
     | 'setup:timetable-rules'
     | 'generate:timetable'
     | 'manage:timetable-history'
+    // Tasks
+    | 'view:tasks'
+    | 'manage:task-boards'
+    | 'manage:task-columns'
+    | 'manage:task-cards'
     // Payroll
     | 'view:payroll'
     | 'import:payroll'
@@ -63,6 +71,8 @@ export const PERMISSIONS_CONFIG: { category: string, permissions: {id: Permissio
         category: 'Dashboard',
         permissions: [
             { id: 'view:dashboard', label: 'View Dashboard' },
+            { id: 'view:dashboard-phase-filter', label: 'View Dashboard Phase Filter' },
+            { id: 'view:header-phase-filter', label: 'View Global Phase Filter in Header' },
         ],
     },
     {
@@ -97,6 +107,15 @@ export const PERMISSIONS_CONFIG: { category: string, permissions: {id: Permissio
             { id: 'setup:timetable-rules', label: 'Manage Timetable Rules' },
             { id: 'generate:timetable', label: 'Generate Timetables' },
             { id: 'manage:timetable-history', label: 'Manage Timetable History' },
+        ]
+    },
+    {
+        category: 'Tasks',
+        permissions: [
+            { id: 'view:tasks', label: 'View Tasks Page' },
+            { id: 'manage:task-boards', label: 'Create & Manage Task Boards' },
+            { id: 'manage:task-columns', label: 'Add/Edit/Delete Columns' },
+            { id: 'manage:task-cards', label: 'Add/Edit/Delete Task Cards' },
         ]
     },
     {

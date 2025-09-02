@@ -30,6 +30,7 @@ export interface SalaryInfo {
     providentFundContribution: number;
     totalEarnings: number;
     totalDeductions: number;
+
     nettPay: number;
     totalCompanyContributions: number;
     salaryCost: number;
@@ -61,7 +62,7 @@ export interface Teacher {
   passwordHash?: string;
 }
 
-export type Page = 'dashboard' | 'academic-team' | 'allocations' | 'leave' | 'observations' | 'procurement' | 'settings' | 'parents' | 'payroll' | 'timetable';
+export type Page = 'dashboard' | 'academic-team' | 'allocations' | 'leave' | 'observations' | 'procurement' | 'settings' | 'parents' | 'payroll' | 'timetable' | 'tasks';
 
 export enum SubjectCategory {
   Core = 'Core',
@@ -234,6 +235,9 @@ export enum FormFieldType {
     Select = 'Select',
     Rating = 'Rating (1-5)',
     Checkbox = 'Checkbox',
+    Date = 'Date',
+    Number = 'Number',
+    FileUpload = 'File Upload',
 }
 
 export interface FormField {
@@ -242,12 +246,14 @@ export interface FormField {
     type: FormFieldType;
     options?: string[];
     required: boolean;
+    placeholder?: string;
 }
 
 export interface MonitoringTemplate {
     id: string; // Stable ID
     name: ObservationType; // Editable name/type shown to user
     fields: FormField[];
+    phaseId?: string; // Optional: Link to a specific phase
 }
 
 export enum ParentQueryCategory {
@@ -386,4 +392,38 @@ export interface AuditLog {
   userName: string;
   action: string;
   details: string;
+}
+
+// Tasks Module
+export interface TaskCard {
+    id: string;
+    title: string;
+    description?: string;
+    dueDate?: string;
+    assignedToId?: string;
+}
+
+export interface TaskColumn {
+    id: string;
+    title: string;
+    cardIds: string[];
+}
+
+export interface TaskBoard {
+    id: string;
+    title: string;
+    memberIds: string[];
+    columns: TaskColumn[];
+    tasks: TaskCard[];
+}
+
+// FIX: Add and export Notification type
+export interface Notification {
+  id: string;
+  userId: string;
+  type: 'leaveStatus' | 'newParentQuery' | 'parentQueryUpdate' | 'slaBreach';
+  data: any;
+  timestamp: string;
+  read: boolean;
+  message: string;
 }

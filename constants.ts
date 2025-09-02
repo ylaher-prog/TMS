@@ -1,4 +1,4 @@
-import type { Teacher, AcademicStructure, PhaseStructure, MonitoringTemplate, AllocationSettings, GeneralSettings, TimeGrid } from './types';
+import type { Teacher, AcademicStructure, PhaseStructure, MonitoringTemplate, AllocationSettings, GeneralSettings, TimeGrid, TaskBoard } from './types';
 import { EmploymentStatus, LeaveType, RequestStatus, FormFieldType, AllocationStrategy } from './types';
 import { ALL_PERMISSIONS } from './permissions';
 
@@ -94,7 +94,7 @@ export const MOCK_TEACHERS: Teacher[] = [
 
 export const MOCK_ACADEMIC_STRUCTURE: AcademicStructure = {
   curricula: ['British', 'CAPS'],
-  grades: ['4', '5', '6', '7'],
+  grades: ['6', '7', '8', '9'],
   subjects: [],
   modes: ['Flipped Afternoon', 'Flipped Morning', 'Live', 'Self-Paced'],
   academicPeriods: [],
@@ -192,4 +192,23 @@ export const DEFAULT_TIME_GRIDS: TimeGrid[] = [
       { id: 'fp4', name: '4', startTime: '15:30', endTime: '16:00', type: 'Lesson' },
     ],
   }
+];
+
+export const MOCK_TASK_BOARDS: TaskBoard[] = [
+    {
+        id: 'board-1',
+        title: 'Admin Tasks (Q3)',
+        memberIds: ['super-admin-01', 'phase-head-01', 'teacher-01'],
+        tasks: [
+            { id: 'task-1', title: 'Finalize Q4 budget proposal', assignedToId: 'phase-head-01', dueDate: '2024-09-15' },
+            { id: 'task-2', title: 'Organize annual staff training day' },
+            { id: 'task-3', title: 'Review new curriculum submissions', assignedToId: 'super-admin-01' },
+            { id: 'task-4', title: 'Submit Q2 performance reviews', dueDate: '2024-06-30' },
+        ],
+        columns: [
+            { id: 'col-1', title: 'To Do', cardIds: ['task-1'] },
+            { id: 'col-2', title: 'In Progress', cardIds: ['task-2'] },
+            { id: 'col-3', title: 'Done', cardIds: ['task-3', 'task-4'] }
+        ]
+    }
 ];

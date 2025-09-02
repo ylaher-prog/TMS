@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import type { TimeGrid, TimeConstraint, GeneratedTimetable, Teacher, ClassGroup, TeacherAllocation, AcademicStructure, TimetablePeriod, GeneratedSlot, Subject, TimetableHistoryEntry, Conflict, LessonDefinition, Permission } from '../types';
 import TabButton from './TabButton';
-import { PlusIcon, TrashIcon, XMarkIcon, SparklesIcon, PencilIcon, ArrowDownTrayIcon, CheckIcon, CheckCircleIcon, InformationCircleIcon } from './Icons';
-import { getSubjectPeriods } from '../App';
+import { PlusIcon, TrashIcon, XMarkIcon, SparklesIcon, PencilIcon, ArrowDownTrayIcon, CheckIcon, CheckCircleIcon, InformationCircleIcon, LightBulbIcon } from './Icons';
+import { getSubjectPeriods } from '../utils';
 import { SubjectCategory } from '../types';
 import ConfirmationModal from './ConfirmationModal';
 import AddEditConstraintModal from './AddEditConstraintModal';
@@ -113,7 +113,7 @@ const TimeGridsComponent: React.FC<Pick<TimetableProps, 'timeGrids' | 'setTimeGr
             <div className="bg-white dark:bg-slate-800/50 p-6 rounded-xl shadow-sm flex justify-between items-center">
                 <div>
                     <h3 className="text-lg font-semibold text-brand-text-dark dark:text-white">Time Grids</h3>
-                    <p className="text-sm text-brand-text-light dark:text-gray-400 mt-1">Define the weekly schedules for each academic mode.</p>
+                    <p className="text-sm text-brand-text-light dark:text-gray-400 mt-1">Define the weekly schedules for each academic mode. Note: Overlapping period times are permitted.</p>
                 </div>
                 {canEdit && (
                     <div className="relative" ref={addGridButtonRef}>
@@ -202,6 +202,7 @@ const TimeGridsComponent: React.FC<Pick<TimetableProps, 'timeGrids' | 'setTimeGr
                                             onChange={e => handleUpdatePeriod(grid.id, period.id, 'startTime', e.target.value)}
                                             className="w-28 p-2 border rounded-md text-sm bg-white dark:bg-slate-700/80 dark:border-slate-600 focus:ring-1 focus:ring-brand-primary disabled:opacity-70"
                                             disabled={!canEdit}
+                                            step="300"
                                         />
                                         <input
                                             type="time"
@@ -209,6 +210,7 @@ const TimeGridsComponent: React.FC<Pick<TimetableProps, 'timeGrids' | 'setTimeGr
                                             onChange={e => handleUpdatePeriod(grid.id, period.id, 'endTime', e.target.value)}
                                             className="w-28 p-2 border rounded-md text-sm bg-white dark:bg-slate-700/80 dark:border-slate-600 focus:ring-1 focus:ring-brand-primary disabled:opacity-70"
                                             disabled={!canEdit}
+                                            step="300"
                                         />
                                         <select
                                             value={period.type ?? 'Lesson'}
@@ -785,11 +787,8 @@ const ClassGroupRulesComponent: React.FC<TimetableProps> = ({ classGroups, setCl
 };
 
 const TeacherAvailabilityComponent: React.FC<Pick<TimetableProps, 'timeGrids' | 'teachers' | 'timeConstraints' | 'setTimeConstraints' | 'currentAcademicYear' | 'permissions'>> = ({ timeGrids, teachers, timeConstraints, setTimeConstraints, currentAcademicYear, permissions }) => {
-    const [selectedGridId, setSelectedGridId] = useState(timeGrids[0]?.id || '');
     const [selectedTeacherId, setSelectedTeacherId] = useState(teachers[0]?.id || '');
     const canEdit = hasPermission(permissions, 'setup:timetable-rules');
-
-    const selectedGrid = useMemo(() => timeGrids.find(g => g.id === selectedGridId), [timeGrids, selectedGridId]);
 
     const unavailableSlots = useMemo(() => {
         const slots = new Set<string>();
@@ -827,61 +826,65 @@ const TeacherAvailabilityComponent: React.FC<Pick<TimetableProps, 'timeGrids' | 
         }
     };
     
-    // Reset selected teacher/grid if they are removed from the main list
     useEffect(() => {
         if(!teachers.find(t => t.id === selectedTeacherId)) {
             setSelectedTeacherId(teachers[0]?.id || '');
         }
     }, [teachers, selectedTeacherId]);
 
-    useEffect(() => {
-        if(!timeGrids.find(g => g.id === selectedGridId)) {
-            setSelectedGridId(timeGrids[0]?.id || '');
-        }
-    }, [timeGrids, selectedGridId]);
-
     return (
         <div className="bg-white dark:bg-slate-800/50 p-6 rounded-xl shadow-sm space-y-4">
             <h3 className="text-lg font-semibold text-brand-text-dark dark:text-white">Teacher Availability</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Mark the times when a specific teacher is unavailable for lessons.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Mark the times when a specific teacher is unavailable for lessons. This applies across all relevant time grids.</p>
             <div className="flex flex-col sm:flex-row gap-4 mt-4">
                 <select value={selectedTeacherId} onChange={e => setSelectedTeacherId(e.target.value)} className="w-full sm:w-60 p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600">
                     {teachers.map(t => <option key={t.id} value={t.id}>{t.fullName}</option>)}
                 </select>
-                <select value={selectedGridId} onChange={e => setSelectedGridId(e.target.value)} className="w-full sm:w-60 p-2 border rounded-md dark:bg-slate-700 dark:border-slate-600">
-                    {timeGrids.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                </select>
             </div>
-            {selectedGrid && selectedTeacherId && teachers.length > 0 && (
-                <div className="overflow-x-auto mt-4">
-                    <table className="min-w-full border-collapse">
-                        <thead className="bg-gray-50 dark:bg-slate-700/50">
-                            <tr className="text-sm">
-                                <th className="p-2 border dark:border-slate-700">Period</th>
-                                {selectedGrid.days.map(day => <th key={day} className="p-2 border dark:border-slate-700">{day}</th>)}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {selectedGrid.periods.map(period => (
-                                <tr key={period.id}>
-                                    <td className="p-2 border dark:border-slate-700 text-xs font-semibold">{period.name} <br/> <span className="font-normal text-gray-500">{period.startTime}-{period.endTime}</span></td>
-                                    {selectedGrid.days.map(day => {
-                                        const isUnavailable = unavailableSlots.has(`${day}-${period.id}`);
-                                        if (period.type === 'Break') {
-                                            return <td key={day} className="p-2 border dark:border-slate-700 bg-gray-200 dark:bg-slate-700 text-center text-xs">Break</td>
-                                        }
-                                        return (
-                                            <td key={day} className="p-1 border dark:border-slate-700 text-center">
-                                                <button onClick={() => handleSlotToggle(day, period.id)} disabled={!canEdit} className={`w-full h-full py-2 rounded-md text-sm transition-colors disabled:cursor-not-allowed ${isUnavailable ? 'bg-red-200 dark:bg-red-800/50 text-red-800 dark:text-red-200 hover:bg-red-300' : 'bg-green-200 dark:bg-green-800/50 text-green-800 dark:text-green-200 hover:bg-green-300'}`}>
-                                                    {isUnavailable ? 'Unavailable' : 'Available'}
-                                                </button>
-                                            </td>
-                                        );
-                                    })}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+            {selectedTeacherId && teachers.length > 0 ? (
+                <div className="space-y-8">
+                    {timeGrids.map(grid => (
+                        <div key={grid.id}>
+                            <h4 className="text-md font-semibold text-brand-text-dark dark:text-white flex items-center gap-2 mb-2">
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: grid.color }}></div>
+                                {grid.name} Schedule
+                            </h4>
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full border-collapse">
+                                    <thead className="bg-gray-50 dark:bg-slate-700/50">
+                                        <tr className="text-sm">
+                                            <th className="p-2 border dark:border-slate-700">Period</th>
+                                            {grid.days.map(day => <th key={day} className="p-2 border dark:border-slate-700">{day}</th>)}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {grid.periods.map(period => (
+                                            <tr key={period.id}>
+                                                <td className="p-2 border dark:border-slate-700 text-xs font-semibold">{period.name} <br/> <span className="font-normal text-gray-500">{period.startTime}-{period.endTime}</span></td>
+                                                {grid.days.map(day => {
+                                                    const isUnavailable = unavailableSlots.has(`${day}-${period.id}`);
+                                                    if (period.type === 'Break') {
+                                                        return <td key={day} className="p-2 border dark:border-slate-700 bg-gray-200 dark:bg-slate-700 text-center text-xs">Break</td>
+                                                    }
+                                                    return (
+                                                        <td key={day} className="p-1 border dark:border-slate-700 text-center">
+                                                            <button onClick={() => handleSlotToggle(day, period.id)} disabled={!canEdit} className={`w-full h-full py-2 rounded-md text-sm transition-colors disabled:cursor-not-allowed ${isUnavailable ? 'bg-red-200 dark:bg-red-800/50 text-red-800 dark:text-red-200 hover:bg-red-300' : 'bg-green-200 dark:bg-green-800/50 text-green-800 dark:text-green-200 hover:bg-green-300'}`}>
+                                                                {isUnavailable ? 'Unavailable' : 'Available'}
+                                                            </button>
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : (
+                 <div className="text-center py-10 text-gray-500">
+                    <p>Select a teacher to view their availability across all time grids.</p>
                 </div>
             )}
         </div>
@@ -1013,7 +1016,7 @@ interface GenerationStatus {
 
 
 const GeneratorComponent: React.FC<TimetableProps & { setActiveTab: (tab: TimetableTab) => void }> = (props) => {
-    const { timeGrids, timeConstraints, setTimetableHistory, teachers, classGroups, allocations, academicStructure, setActiveTab, currentAcademicYear, permissions, logAction } = props;
+    const { timeGrids, timeConstraints, setTimetableHistory, teachers, classGroups, allocations, academicStructure, setActiveTab, currentAcademicYear, permissions, logAction, setTimeConstraints } = props;
     
     const [generationStatus, setGenerationStatus] = useState<GenerationStatus>({
         running: false, placed: 0, total: 0, currentLessonText: '', backtracks: 0, mostDifficultLesson: null
@@ -1033,6 +1036,43 @@ const GeneratorComponent: React.FC<TimetableProps & { setActiveTab: (tab: Timeta
     const handleCancelGeneration = () => {
         cancelGenerationRef.current = true;
     };
+    
+    type FixAction = {
+        type: 'CLEAR_TEACHER_UNAVAILABILITY';
+        payload: { teacherId: string; gridId: string };
+    } | {
+        type: 'RELAX_SUBJECT_RULE';
+        payload: { constraintId: string; ruleToChange: 'mustBeEveryDay' | 'maxPeriodsPerDay'; newValue: boolean | null };
+    };
+    
+    const handleApplyFix = (fix: FixAction) => {
+        if (fix.type === 'CLEAR_TEACHER_UNAVAILABILITY') {
+            const { teacherId, gridId } = fix.payload;
+            const grid = timeGrids.find(g => g.id === gridId);
+            if (grid) {
+                const periodIds = new Set(grid.periods.map(p => p.id));
+                setTimeConstraints(prev => prev.filter(c => {
+                    if (c.type === 'not-available' && c.targetType === 'teacher' && c.targetId === teacherId) {
+                        return !periodIds.has(c.periodId);
+                    }
+                    return true;
+                }));
+                alert(`Cleared unavailability for ${teacherMap.get(teacherId)?.fullName} on the ${grid.name} schedule.`);
+            }
+        } else if (fix.type === 'RELAX_SUBJECT_RULE') {
+            const { constraintId, ruleToChange, newValue } = fix.payload;
+            setTimeConstraints(prev => prev.map(c => {
+                if (c.id === constraintId && c.type === 'subject-rule') {
+                    const newRules = { ...c.rules, [ruleToChange]: newValue };
+                    return { ...c, rules: newRules };
+                }
+                return c;
+            }));
+            alert(`Relaxed the "${ruleToChange}" rule.`);
+        }
+        setLessonToAnalyze(null); // Close the modal after applying
+    };
+
 
     const handleGenerateTimetable = useCallback(async () => {
         cancelGenerationRef.current = false;
@@ -1067,7 +1107,7 @@ const GeneratorComponent: React.FC<TimetableProps & { setActiveTab: (tab: Timeta
         lessonsToPlaceRef.current = lessons;
         
         setGenerationStatus(prev => ({...prev, total: lessons.length}));
-
+        
         const isPlacementValid = (lesson: Lesson, day: string, startPeriodIndex: number, timetable: GeneratedTimetable, grid: TimeGrid): boolean => {
             for (let j = 0; j < lesson.duration; j++) {
                 const periodIndex = startPeriodIndex + j;
@@ -1293,6 +1333,7 @@ const GeneratorComponent: React.FC<TimetableProps & { setActiveTab: (tab: Timeta
                 lesson={lessonToAnalyze}
                 timeConstraints={timeConstraints}
                 timeGrids={timeGrids}
+                onApplyFix={handleApplyFix}
             />
         )}
         </>

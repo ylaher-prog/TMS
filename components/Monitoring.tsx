@@ -5,6 +5,7 @@ import MonitoringDashboard from './MonitoringDashboard';
 import MonitoringData from './MonitoringData';
 import MonitoringSetup from './MonitoringSetup';
 import MultiSelectFilter from './MultiSelectFilter';
+import AIReportGenerator from './AIReportGenerator';
 
 interface MonitoringProps {
     teachers: Teacher[];
@@ -21,7 +22,7 @@ interface MonitoringProps {
     logAction: (action: string, details: string) => void;
 }
 
-type MonitoringTab = 'dashboard' | 'data' | 'setup';
+type MonitoringTab = 'dashboard' | 'data' | 'setup' | 'ai';
 
 const Monitoring: React.FC<MonitoringProps> = (props) => {
     const { teachers, observations, academicStructure, phaseStructures, classGroups } = props;
@@ -67,6 +68,8 @@ const Monitoring: React.FC<MonitoringProps> = (props) => {
                 return <MonitoringData {...props} observations={filteredObservations} />;
             case 'setup':
                 return <MonitoringSetup {...props} />;
+            case 'ai':
+                return <AIReportGenerator observations={filteredObservations} {...props} />;
             default:
                 return null;
         }
@@ -79,6 +82,7 @@ const Monitoring: React.FC<MonitoringProps> = (props) => {
                     <TabButton tabId="dashboard" label="Dashboard" activeTab={activeTab} setActiveTab={setActiveTab as (tabId: string) => void} />
                     <TabButton tabId="data" label="Data Entries" activeTab={activeTab} setActiveTab={setActiveTab as (tabId: string) => void} />
                     <TabButton tabId="setup" label="Setup" activeTab={activeTab} setActiveTab={setActiveTab as (tabId: string) => void} />
+                    <TabButton tabId="ai" label="AI Insights" activeTab={activeTab} setActiveTab={setActiveTab as (tabId: string) => void} />
                 </nav>
             </div>
             

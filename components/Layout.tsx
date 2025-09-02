@@ -1,7 +1,8 @@
 import React from 'react';
 import Sidebar from './Sidebar';
 import Header from './Header';
-import type { Page, Teacher, AcademicStructure } from '../types';
+// FIX: Import Notification type
+import type { Page, Teacher, AcademicStructure, Notification, PhaseStructure } from '../types';
 import type { Permission } from '../permissions';
 
 interface LayoutProps {
@@ -14,13 +15,19 @@ interface LayoutProps {
   isDarkMode: boolean;
   setIsDarkMode: React.Dispatch<React.SetStateAction<boolean>>;
   academicStructure: AcademicStructure;
+  phaseStructures: PhaseStructure[];
   currentAcademicYear: string;
   setCurrentAcademicYear: (year: string) => void;
   permissions: Permission[];
+  // FIX: Add missing notifications and setNotifications props
+  notifications: Notification[];
+  setNotifications: React.Dispatch<React.SetStateAction<Notification[]>>;
+  selectedPhaseId: string;
+  setSelectedPhaseId: (phaseId: string) => void;
 }
 
 const Layout: React.FC<LayoutProps> = (props) => {
-  const { children, activePage, setActivePage, currentUser, onLogout, setTeachers, isDarkMode, setIsDarkMode, academicStructure, currentAcademicYear, setCurrentAcademicYear, permissions } = props;
+  const { children, activePage, setActivePage, currentUser, onLogout, setTeachers, isDarkMode, setIsDarkMode, academicStructure, phaseStructures, currentAcademicYear, setCurrentAcademicYear, permissions, notifications, setNotifications, selectedPhaseId, setSelectedPhaseId } = props;
   return (
     <div className="flex h-screen bg-brand-bg dark:bg-brand-navy font-sans text-brand-text-dark dark:text-gray-300">
       <Sidebar 
@@ -41,6 +48,14 @@ const Layout: React.FC<LayoutProps> = (props) => {
           academicStructure={academicStructure}
           currentAcademicYear={currentAcademicYear}
           setCurrentAcademicYear={setCurrentAcademicYear}
+          // FIX: Pass missing props to Header
+          notifications={notifications}
+          setNotifications={setNotifications}
+          permissions={permissions}
+          // FIX: Pass phaseStructures prop correctly. The previous logic was flawed and accessing non-existent properties.
+          phaseStructures={phaseStructures}
+          selectedPhaseId={selectedPhaseId}
+          setSelectedPhaseId={setSelectedPhaseId}
         />
         <main className="flex-1 overflow-x-hidden overflow-y-auto p-6 md:p-8">
           {children}

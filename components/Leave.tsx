@@ -12,11 +12,13 @@ interface LeaveProps {
     currentAcademicYear: string;
     permissions: Permission[];
     logAction: (action: string, details: string) => void;
+    // FIX: Add missing sendNotification prop
+    sendNotification: (userId: string, type: 'leaveStatus', data: any) => void;
 }
 
 type SortableKey = 'teacher' | 'leaveType' | 'startDate' | 'status';
 
-const Leave: React.FC<LeaveProps> = ({ teachers, leaveRequests, setLeaveRequests, currentAcademicYear, permissions, logAction }) => {
+const Leave: React.FC<LeaveProps> = ({ teachers, leaveRequests, setLeaveRequests, currentAcademicYear, permissions, logAction, sendNotification }) => {
     const [filters, setFilters] = useState({
         status: 'all',
         teacherName: '',
@@ -28,7 +30,18 @@ const Leave: React.FC<LeaveProps> = ({ teachers, leaveRequests, setLeaveRequests
     const teacherMap = useMemo(() => new Map(teachers.map(t => [t.id, t])), [teachers]);
 
     const handleStatusChange = (id: string, newStatus: RequestStatus) => {
-        setLeaveRequests(prev => prev.map(req => req.id === id ? { ...req, status: newStatus } : req));
+        setLeaveRequests(prev => prev.map(req => {
+            if (req.id === id) {
+                const updatedReq = { ...req, status: newStatus };
+                sendNotification(
+                    updatedReq.teacherId, 
+                    'leaveStatus', 
+                    { startDate: updatedReq.startDate, endDate: updatedReq.endDate, status: newStatus }
+                );
+                return updatedReq;
+            }
+            return req;
+        }));
     };
 
     const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {

@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import Modal from './Modal';
 import type { Teacher, Subject, ClassGroup, TimeConstraint, TimeGrid } from '../types';
 import { SubjectCategory } from '../types';
+import { LightBulbIcon } from './Icons';
 
 type Lesson = {
     classGroup: ClassGroup;
@@ -11,12 +12,22 @@ type Lesson = {
     id: string;
 };
 
+type FixAction = {
+    type: 'CLEAR_TEACHER_UNAVAILABILITY';
+    payload: { teacherId: string; gridId: string };
+} | {
+    type: 'RELAX_SUBJECT_RULE';
+    payload: { constraintId: string; ruleToChange: 'mustBeEveryDay' | 'maxPeriodsPerDay'; newValue: boolean | null };
+};
+
+
 interface ConstraintAnalysisModalProps {
     isOpen: boolean;
     onClose: () => void;
     lesson: Lesson | null;
     timeConstraints: TimeConstraint[];
     timeGrids: TimeGrid[];
+    onApplyFix: (fix: FixAction) => void;
 }
 
 const InfoRow: React.FC<{ label: string; value: React.ReactNode; status?: 'ok' | 'warning' | 'error' }> = ({ label, value, status }) => {
@@ -33,7 +44,7 @@ const InfoRow: React.FC<{ label: string; value: React.ReactNode; status?: 'ok' |
     );
 };
 
-const ConstraintAnalysisModal: React.FC<ConstraintAnalysisModalProps> = ({ isOpen, onClose, lesson, timeConstraints, timeGrids }) => {
+const ConstraintAnalysisModal: React.FC<ConstraintAnalysisModalProps> = ({ isOpen, onClose, lesson, timeConstraints, timeGrids, onApplyFix }) => {
     
     const analysis = useMemo(() => {
         if (!lesson) return null;
@@ -56,7 +67,6 @@ const ConstraintAnalysisModal: React.FC<ConstraintAnalysisModalProps> = ({ isOpe
         const subjectRule = timeConstraints.find(c => c.type === 'subject-rule' && c.classGroupId === classGroup.id && (c.subjectId === subject.id || (subject.category === SubjectCategory.Elective && subject.electiveGroup && (c as any).subject?.electiveGroup === subject.electiveGroup))) as Extract<TimeConstraint, { type: 'subject-rule' }> | undefined;
         
         // Class Group Saturation Analysis
-        // This is a simplified analysis as we don't have the current state of the timetable being built
         const periodsRequiredForGroup = classGroup.subjectIds.reduce((total, sId) => {
             const subj = timeConstraints.find(c => c.type === 'subject-rule' && c.classGroupId === classGroup.id && c.subjectId === sId) as Extract<TimeConstraint, { type: 'subject-rule' }> | undefined;
             if (subj) {
@@ -70,6 +80,20 @@ const ConstraintAnalysisModal: React.FC<ConstraintAnalysisModalProps> = ({ isOpe
         if (groupSaturationPercent > 90) groupSaturationStatus = 'error';
         else if (groupSaturationPercent > 75) groupSaturationStatus = 'warning';
 
+        // Suggested Fix Logic
+        let suggestedFix: FixAction | null = null;
+        let suggestionText = '';
+
+        if (teacherAvailabilityPercent < 50 && teacherUnavailableSlots.length > 0) {
+            suggestionText = `Teacher availability is very low (${teacherAvailabilityPercent.toFixed(0)}%). Consider clearing their unavailable slots on this schedule to increase placement options.`;
+            suggestedFix = { type: 'CLEAR_TEACHER_UNAVAILABILITY', payload: { teacherId: teacher.id, gridId: grid.id } };
+        } else if (subjectRule?.rules.mustBeEveryDay && groupSaturationPercent > 80) {
+            suggestionText = `The 'Must be every day' rule is very strict, especially with a highly saturated schedule (${groupSaturationPercent.toFixed(0)}%). Relaxing this rule may solve the issue.`;
+            suggestedFix = { type: 'RELAX_SUBJECT_RULE', payload: { constraintId: subjectRule.id, ruleToChange: 'mustBeEveryDay', newValue: false } };
+        } else if (subjectRule?.rules.maxPeriodsPerDay && subjectRule.rules.maxPeriodsPerDay <= 2 && groupSaturationPercent > 80) {
+             suggestionText = `The 'Max Periods per Day' rule of ${subjectRule.rules.maxPeriodsPerDay} is tight for a saturated schedule. Removing this limit could provide more flexibility.`;
+            suggestedFix = { type: 'RELAX_SUBJECT_RULE', payload: { constraintId: subjectRule.id, ruleToChange: 'maxPeriodsPerDay', newValue: null } };
+        }
 
         return {
             teacher,
@@ -89,6 +113,10 @@ const ConstraintAnalysisModal: React.FC<ConstraintAnalysisModalProps> = ({ isOpe
                 required: periodsRequiredForGroup,
                 percent: groupSaturationPercent,
                 status: groupSaturationStatus,
+            },
+            suggestion: {
+                text: suggestionText,
+                fix: suggestedFix
             }
         };
 
@@ -98,7 +126,7 @@ const ConstraintAnalysisModal: React.FC<ConstraintAnalysisModalProps> = ({ isOpe
         return <Modal isOpen={isOpen} onClose={onClose} title="Constraint Analysis"><p>Loading analysis...</p></Modal>;
     }
     
-    const { teacher, subject, classGroup, teacherAvailability, subjectRule, groupSaturation } = analysis;
+    const { teacher, subject, classGroup, teacherAvailability, subjectRule, groupSaturation, suggestion } = analysis;
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Constraint Analysis" size="lg">
@@ -148,7 +176,24 @@ const ConstraintAnalysisModal: React.FC<ConstraintAnalysisModalProps> = ({ isOpe
                         </p>
                     </div>
                 </div>
-
+                
+                {suggestion.fix && (
+                    <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800/50 space-y-3">
+                        <div className="flex items-center gap-2">
+                            <LightBulbIcon className="w-6 h-6 text-green-600 dark:text-green-300" />
+                            <h4 className="font-semibold text-green-800 dark:text-green-200">Suggested Fix</h4>
+                        </div>
+                        <p className="text-sm text-green-700 dark:text-green-300">{suggestion.text}</p>
+                        <div className="flex justify-end">
+                            <button
+                                onClick={() => onApplyFix(suggestion.fix!)}
+                                className="bg-green-600 text-white px-4 py-2 text-sm rounded-lg font-medium hover:bg-green-700 transition-colors"
+                            >
+                                Apply Suggested Fix
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </Modal>
     );

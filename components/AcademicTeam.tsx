@@ -18,6 +18,8 @@ interface AcademicTeamProps {
     timeGrids: TimeGrid[];
     timetableHistory: TimetableHistoryEntry[];
     permissions: Permission[];
+    // FIX: Add missing currentUser prop
+    currentUser: Teacher;
     logAction: (action: string, details: string) => void;
 }
 

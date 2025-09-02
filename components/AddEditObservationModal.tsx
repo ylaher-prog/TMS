@@ -77,7 +77,7 @@ const AddEditObservationModal: React.FC<AddEditObservationModalProps> = (props) 
     const wizardSteps = ["Details", "Evaluation", "Summary & Actions"];
     
     const [formData, setFormData] = useState({
-        observationType: monitoringTemplates[0]?.id || '',
+        observationType: '',
         teacherId: teachers[0]?.id || '',
         grade: '',
         curriculum: '',
@@ -92,11 +92,11 @@ const AddEditObservationModal: React.FC<AddEditObservationModalProps> = (props) 
 
     const [derivedData, setDerivedData] = useState({
         phase: '',
+        phaseId: '',
         phaseHeadId: '',
         phaseHeadName: 'N/A',
     });
     
-    const activeTemplate = monitoringTemplates.find(t => t.id === formData.observationType);
     const subjectMap = useMemo(() => new Map(academicStructure.subjects.map(s => [s.id, s])), [academicStructure.subjects]);
 
     const teacherAllocatedGroups = useMemo(() => {
@@ -109,6 +109,12 @@ const AddEditObservationModal: React.FC<AddEditObservationModalProps> = (props) 
         if (!group) return [];
         return group.subjectIds.map(id => subjectMap.get(id)).filter((s): s is Subject => !!s);
     }, [formData.classGroupId, classGroups, subjectMap]);
+
+    const availableTemplates = useMemo(() => {
+        return monitoringTemplates.filter(t => !t.phaseId || t.phaseId === derivedData.phaseId);
+    }, [monitoringTemplates, derivedData.phaseId]);
+
+    const activeTemplate = monitoringTemplates.find(t => t.id === formData.observationType);
 
     useEffect(() => {
         const initialCustomData: Record<string, any> = {};
@@ -136,7 +142,7 @@ const AddEditObservationModal: React.FC<AddEditObservationModalProps> = (props) 
         } else {
              setFormData(prev => ({
                 ...prev,
-                observationType: monitoringTemplates[0]?.id || '',
+                observationType: availableTemplates[0]?.id || '',
                 teacherId: teachers[0]?.id || '',
                 grade: '',
                 curriculum: '',
@@ -150,7 +156,7 @@ const AddEditObservationModal: React.FC<AddEditObservationModalProps> = (props) 
             }));
         }
         setStep(1);
-    }, [existingObservation, isOpen, teachers, activeTemplate, monitoringTemplates]);
+    }, [existingObservation, isOpen, teachers, activeTemplate, monitoringTemplates, availableTemplates]);
     
     useEffect(() => {
         const { grade, curriculum } = formData;
@@ -164,11 +170,12 @@ const AddEditObservationModal: React.FC<AddEditObservationModalProps> = (props) 
             const head = teachers.find(t => t.id === foundPhaseInfo.phaseHeadId);
             setDerivedData({ 
                 phase: foundPhaseInfo.phase, 
+                phaseId: foundPhaseInfo.id,
                 phaseHeadId: foundPhaseInfo.phaseHeadId,
                 phaseHeadName: head?.fullName || 'N/A' 
             });
         } else {
-            setDerivedData({ phase: '', phaseHeadId: '', phaseHeadName: 'N/A' });
+            setDerivedData({ phase: '', phaseId: '', phaseHeadId: '', phaseHeadName: 'N/A' });
         }
     }, [formData.grade, formData.curriculum, phaseStructures, teachers]);
     
@@ -181,20 +188,38 @@ const AddEditObservationModal: React.FC<AddEditObservationModalProps> = (props) 
             }
         }
     }, [formData.classGroupId, classGroups]);
+    
+    // Reset observation type if it becomes unavailable
+    useEffect(() => {
+        if (availableTemplates.length > 0 && !availableTemplates.find(t => t.id === formData.observationType)) {
+            setFormData(prev => ({ ...prev, observationType: availableTemplates[0].id }));
+        }
+    }, [availableTemplates, formData.observationType]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleCustomFormChange = (fieldId: string, value: any) => {
-        setFormData(prev => ({
-            ...prev,
-            customFormData: {
-                ...prev.customFormData,
-                [fieldId]: value,
-            }
-        }));
+    const handleCustomFormChange = (fieldId: string, value: any, file?: File) => {
+        // For frontend demo, we'll just store the file name for file uploads
+        if (file) {
+             setFormData(prev => ({
+                ...prev,
+                customFormData: {
+                    ...prev.customFormData,
+                    [fieldId]: file.name,
+                }
+            }));
+        } else {
+             setFormData(prev => ({
+                ...prev,
+                customFormData: {
+                    ...prev.customFormData,
+                    [fieldId]: value,
+                }
+            }));
+        }
     }
     
     const handleSubmit = (e: React.FormEvent) => {
@@ -233,9 +258,13 @@ const AddEditObservationModal: React.FC<AddEditObservationModalProps> = (props) 
         const value = formData.customFormData[field.id];
         switch(field.type) {
             case FormFieldType.Text:
-                return <FormInput type="text" id={field.id} value={value || ''} onChange={(e) => handleCustomFormChange(field.id, e.target.value)} required={field.required} />;
+                return <FormInput type="text" id={field.id} value={value || ''} onChange={(e) => handleCustomFormChange(field.id, e.target.value)} required={field.required} placeholder={field.placeholder}/>;
+            case FormFieldType.Number:
+                return <FormInput type="number" id={field.id} value={value || ''} onChange={(e) => handleCustomFormChange(field.id, e.target.value)} required={field.required} placeholder={field.placeholder} />;
+            case FormFieldType.Date:
+                return <FormInput type="date" id={field.id} value={value || ''} onChange={(e) => handleCustomFormChange(field.id, e.target.value)} required={field.required} />;
             case FormFieldType.Textarea:
-                return <FormTextarea id={field.id} value={value || ''} onChange={(e) => handleCustomFormChange(field.id, e.target.value)} required={field.required} rows={4} />;
+                return <FormTextarea id={field.id} value={value || ''} onChange={(e) => handleCustomFormChange(field.id, e.target.value)} required={field.required} rows={4} placeholder={field.placeholder}/>;
             case FormFieldType.Select:
                 return <FormSelect id={field.id} value={value || ''} onChange={(e) => handleCustomFormChange(field.id, e.target.value)} required={field.required}>
                     <option value="">-- Select --</option>
@@ -245,6 +274,13 @@ const AddEditObservationModal: React.FC<AddEditObservationModalProps> = (props) 
                 return <div className="mt-2"><Checkbox id={field.id} label={field.label} checked={!!value} onChange={(e) => handleCustomFormChange(field.id, e.target.checked)} /></div>;
             case FormFieldType.Rating:
                 return <StarRating value={value || 0} onChange={(rating) => handleCustomFormChange(field.id, rating)} />;
+            case FormFieldType.FileUpload:
+                return (
+                    <div>
+                        <FormInput type="file" id={field.id} onChange={(e) => handleCustomFormChange(field.id, null, e.target.files?.[0])} required={field.required} />
+                        {value && <p className="text-xs text-gray-500 mt-1">Current file: {value}</p>}
+                    </div>
+                );
             default: return null;
         }
     }
@@ -285,7 +321,7 @@ const AddEditObservationModal: React.FC<AddEditObservationModalProps> = (props) 
                     <div>
                         <FormLabel htmlFor="observationType">Type</FormLabel>
                         <FormSelect name="observationType" id="observationType" value={formData.observationType} onChange={handleChange}>
-                            {monitoringTemplates.map(template => <option key={template.id} value={template.id}>{template.name}</option>)}
+                            {availableTemplates.map(template => <option key={template.id} value={template.id}>{template.name}</option>)}
                         </FormSelect>
                     </div>
                      <div>

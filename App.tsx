@@ -14,8 +14,10 @@ import LoginPage from './components/LoginPage';
 import Payroll from './components/Payroll';
 import Timetable from './components/Timetable';
 import TeacherDashboard from './components/TeacherDashboard';
+import Tasks from './components/Tasks';
 
-import type { Page, Teacher, AcademicStructure, ClassGroup, TeacherAllocation, LeaveRequest, Observation, ProcurementRequest, TeacherWorkload, PhaseStructure, Subject, MonitoringTemplate, ParentQuery, AllocationSettings, GeneralSettings, TimeGrid, TimeConstraint, TimetableHistoryEntry, GeneratedTimetable, Permission, AuditLog } from './types';
+// FIX: Import Notification type
+import type { Page, Teacher, AcademicStructure, ClassGroup, TeacherAllocation, LeaveRequest, Observation, ProcurementRequest, TeacherWorkload, PhaseStructure, Subject, MonitoringTemplate, ParentQuery, AllocationSettings, GeneralSettings, TimeGrid, TimeConstraint, TimetableHistoryEntry, GeneratedTimetable, Permission, AuditLog, TaskBoard, Notification } from './types';
 import { EmploymentStatus, SubjectCategory } from './types';
 import { 
   MOCK_ACADEMIC_STRUCTURE,
@@ -26,8 +28,11 @@ import {
   DEFAULT_GENERAL_SETTINGS,
   DEFAULT_TIME_GRIDS,
   TIME_GRID_COLORS,
+  MOCK_TASK_BOARDS,
 } from './constants';
 import { getUserPermissions, hasPermission } from './permissions';
+import { getSubjectPeriods } from './utils';
+import { generateNotification } from './utils/notifications';
 
 const LOCAL_STORAGE_KEY = 'qtms_app_data';
 
@@ -48,21 +53,13 @@ interface AppState {
   timeConstraints: TimeConstraint[];
   timetableHistory: TimetableHistoryEntry[];
   auditLog: AuditLog[];
+  taskBoards?: TaskBoard[];
+  notifications?: Notification[];
   currentAcademicYear?: string;
   // adminUsers is now obsolete and will be migrated to teachers
   adminUsers?: any[];
   generatedTimetable?: any; // For migration
 }
-
-export const getSubjectPeriods = (subject: Subject, curriculum: string, grade: string, mode: string): number => {
-    const override = subject.periodOverrides?.find(o => o.curriculum === curriculum && o.grade === grade && o.mode === mode);
-    if (override) {
-        return Number(override.periods) || 0;
-    }
-    
-    const modePeriod = (subject.periodsByMode || []).find(p => p.mode === mode);
-    return modePeriod ? (Number(modePeriod.periods) || 0) : 0;
-};
 
 const App: React.FC = () => {
   const loadState = (): AppState | null => {
@@ -102,6 +99,8 @@ const App: React.FC = () => {
         if (state.timeConstraints) state.timeConstraints = state.timeConstraints.map(addYearField);
         if (state.timetableHistory) state.timetableHistory = state.timetableHistory.map(item => ({...item, academicYear: item.academicYear || defaultYear}));
         if (!state.auditLog) state.auditLog = [];
+        if (!state.taskBoards) state.taskBoards = MOCK_TASK_BOARDS;
+        if (!state.notifications) state.notifications = [];
 
         // One-time migration from adminUsers to teachers
         if (state.adminUsers && state.adminUsers.length > 0) {
@@ -301,6 +300,8 @@ const App: React.FC = () => {
   const [timeConstraints, setTimeConstraints] = useState<TimeConstraint[]>(savedState?.timeConstraints || []);
   const [timetableHistory, setTimetableHistory] = useState<TimetableHistoryEntry[]>(savedState?.timetableHistory || []);
   const [auditLog, setAuditLog] = useState<AuditLog[]>(savedState?.auditLog || []);
+  const [taskBoards, setTaskBoards] = useState<TaskBoard[]>(savedState?.taskBoards || MOCK_TASK_BOARDS);
+  const [notifications, setNotifications] = useState<Notification[]>(savedState?.notifications || []);
 
   const [currentAcademicYear, setCurrentAcademicYear] = useState<string>(() => {
     const savedYear = savedState?.currentAcademicYear;
@@ -314,6 +315,7 @@ const App: React.FC = () => {
 
   const [currentUser, setCurrentUser] = useState<Teacher | null>(null);
   const [currentUserPermissions, setCurrentUserPermissions] = useState<Permission[]>([]);
+  const [selectedPhaseId, setSelectedPhaseId] = useState('all');
 
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -326,15 +328,29 @@ const App: React.FC = () => {
   // --- Scoped Data By User Role & Academic Year ---
   const scopedData = useMemo(() => {
     // 1. Filter everything by the selected academic year first
-    const yearClassGroups = classGroups.filter(cg => cg.academicYear === currentAcademicYear);
-    const yearClassGroupIds = new Set(yearClassGroups.map(cg => cg.id));
-    const yearAllocations = allocations.filter(a => yearClassGroupIds.has(a.classGroupId));
+    let yearClassGroups = classGroups.filter(cg => cg.academicYear === currentAcademicYear);
     const yearLeaveRequests = leaveRequests.filter(lr => lr.academicYear === currentAcademicYear);
     const yearObservations = observations.filter(o => o.academicYear === currentAcademicYear);
     const yearProcurementRequests = procurementRequests.filter(pr => pr.academicYear === currentAcademicYear);
     const yearParentQueries = parentQueries.filter(pq => pq.academicYear === currentAcademicYear);
     const yearTimeConstraints = timeConstraints.filter(tc => tc.academicYear === currentAcademicYear);
     const yearTimetableHistory = timetableHistory.filter(th => th.academicYear === currentAcademicYear);
+    
+    // 2. Filter by the selected global phase
+    if (selectedPhaseId !== 'all') {
+        const phase = phaseStructures.find(p => p.id === selectedPhaseId);
+        if (phase) {
+            const phaseGradeCurricula = new Set<string>();
+            phase.grades.forEach(g => {
+                phase.curricula.forEach(c => {
+                    phaseGradeCurricula.add(`${g}|${c}`);
+                });
+            });
+            yearClassGroups = yearClassGroups.filter(cg => phaseGradeCurricula.has(`${cg.grade}|${cg.curriculum}`));
+        }
+    }
+    
+    const yearAllocations = allocations.filter(a => yearClassGroups.some(cg => cg.id === a.classGroupId));
 
     if (!currentUser) {
         return { visibleTeachers: [], classGroups: [], allocations: [], leaveRequests: [], observations: [], procurementRequests: [], parentQueries: [], timeConstraints: [], timetableHistory: [] };
@@ -345,7 +361,7 @@ const App: React.FC = () => {
         return { visibleTeachers: teachers, classGroups: yearClassGroups, allocations: yearAllocations, leaveRequests: yearLeaveRequests, observations: yearObservations, procurementRequests: yearProcurementRequests, parentQueries: yearParentQueries, timeConstraints: yearTimeConstraints, timetableHistory: yearTimetableHistory };
     }
 
-    // 2. Determine the set of teacher IDs the current user is allowed to see
+    // 3. Determine the set of teacher IDs the current user is allowed to see
     const visibleTeacherIds = new Set<string>();
     
     // A teacher can always see themself
@@ -395,7 +411,7 @@ const App: React.FC = () => {
         }
     }
 
-    // 3. Filter all data based on the visibleTeacherIds
+    // 4. Filter all data based on the visibleTeacherIds
     const visibleTeachers = teachers.filter(t => visibleTeacherIds.has(t.id));
     const scopedAllocations = yearAllocations.filter(a => visibleTeacherIds.has(a.teacherId));
     const visibleClassGroupIds = new Set(scopedAllocations.map(a => a.classGroupId));
@@ -413,10 +429,10 @@ const App: React.FC = () => {
         observations: scopedObservations,
         procurementRequests: scopedProcurementRequests,
         parentQueries: scopedParentQueries,
-        timeConstraints: yearTimeConstraints, // Constraints are global for now
+        timeConstraints: yearTimeConstraints, // Constraints are global for the year
         timetableHistory: yearTimetableHistory,
     };
-  }, [currentUser, currentAcademicYear, teachers, classGroups, allocations, leaveRequests, observations, procurementRequests, parentQueries, timeConstraints, timetableHistory, academicStructure, phaseStructures]);
+  }, [currentUser, currentAcademicYear, selectedPhaseId, teachers, classGroups, allocations, leaveRequests, observations, procurementRequests, parentQueries, timeConstraints, timetableHistory, academicStructure, phaseStructures]);
 
 
   const teacherWorkloads = useMemo(() => {
@@ -496,6 +512,8 @@ const App: React.FC = () => {
             timeConstraints,
             timetableHistory,
             auditLog,
+            taskBoards,
+            notifications,
             currentAcademicYear,
         };
         const serializedState = JSON.stringify(stateToSave);
@@ -507,7 +525,7 @@ const App: React.FC = () => {
             console.error("Could not save state to localStorage", err);
         }
     }
-  }, [teachers, academicStructure, phaseStructures, classGroups, allocations, leaveRequests, observations, procurementRequests, monitoringTemplates, parentQueries, allocationSettings, generalSettings, timeGrids, timeConstraints, timetableHistory, auditLog, currentAcademicYear]);
+  }, [teachers, academicStructure, phaseStructures, classGroups, allocations, leaveRequests, observations, procurementRequests, monitoringTemplates, parentQueries, allocationSettings, generalSettings, timeGrids, timeConstraints, timetableHistory, auditLog, taskBoards, notifications, currentAcademicYear]);
 
   const logAction = (action: string, details: string) => {
     if (!currentUser) return;
@@ -520,6 +538,14 @@ const App: React.FC = () => {
       details,
     };
     setAuditLog(prev => [newLog, ...prev].slice(0, 500)); // Keep last 500 logs
+  };
+
+  const sendNotification = (userId: string, type: 'leaveStatus' | 'newParentQuery' | 'parentQueryUpdate' | 'slaBreach', data: any) => {
+      const teacher = teachers.find(t => t.id === userId);
+      if (!teacher) return;
+      
+      const newNotification = generateNotification(userId, type, data);
+      setNotifications(prev => [newNotification, ...prev]);
   };
 
   const handleLoginSuccess = (user: Teacher) => {
@@ -573,6 +599,7 @@ const App: React.FC = () => {
       'procurement': 'view:procurement',
       'parents': 'view:parents',
       'settings': 'view:settings',
+      'tasks': 'view:tasks',
   };
 
   const canViewActivePage = hasPermission(currentUserPermissions, pagePermissions[activePage]);
@@ -589,7 +616,15 @@ const App: React.FC = () => {
     
     switch (activePage) {
       case 'dashboard':
-        return <Dashboard teachers={scopedData.visibleTeachers} workloads={teacherWorkloads}/>;
+        return <Dashboard 
+                  teachers={scopedData.visibleTeachers} 
+                  workloads={teacherWorkloads}
+                  phaseStructures={phaseStructures}
+                  permissions={currentUserPermissions}
+                  sendNotification={sendNotification}
+                  allocations={scopedData.allocations}
+                  classGroups={scopedData.classGroups}
+                />;
       case 'academic-team':
         return <AcademicTeam 
                   teachers={scopedData.visibleTeachers} 
@@ -605,6 +640,8 @@ const App: React.FC = () => {
                   timeGrids={timeGrids}
                   timetableHistory={scopedData.timetableHistory}
                   permissions={currentUserPermissions}
+// FIX: Pass currentUser prop to AcademicTeam
+                  currentUser={currentUser}
                   logAction={logAction}
                 />;
       case 'allocations':
@@ -641,10 +678,26 @@ const App: React.FC = () => {
                   permissions={currentUserPermissions}
                   logAction={logAction}
                />;
+      case 'tasks':
+        return <Tasks 
+                  boards={taskBoards}
+                  setBoards={setTaskBoards}
+                  allTeachers={teachers}
+                  currentUser={currentUser}
+                  permissions={currentUserPermissions}
+                />;
       case 'payroll':
         return <Payroll teachers={scopedData.visibleTeachers} setTeachers={setTeachers} permissions={currentUserPermissions} logAction={logAction} />;
       case 'leave':
-        return <Leave teachers={scopedData.visibleTeachers} leaveRequests={scopedData.leaveRequests} setLeaveRequests={setLeaveRequests} currentAcademicYear={currentAcademicYear} permissions={currentUserPermissions} logAction={logAction} />;
+        return <Leave 
+                  teachers={scopedData.visibleTeachers} 
+                  leaveRequests={scopedData.leaveRequests} 
+                  setLeaveRequests={setLeaveRequests} 
+                  currentAcademicYear={currentAcademicYear} 
+                  permissions={currentUserPermissions} 
+                  sendNotification={sendNotification}
+                  logAction={logAction}
+                />;
       case 'observations':
         return <Monitoring 
                     teachers={scopedData.visibleTeachers} 
@@ -669,6 +722,7 @@ const App: React.FC = () => {
                  setQueries={setParentQueries}
                  currentAcademicYear={currentAcademicYear}
                  permissions={currentUserPermissions}
+                 sendNotification={sendNotification}
                  logAction={logAction}
                />;
       case 'settings':
@@ -695,7 +749,15 @@ const App: React.FC = () => {
           />
         );
       default:
-        return <Dashboard teachers={scopedData.visibleTeachers} workloads={teacherWorkloads} />;
+        return <Dashboard 
+                  teachers={scopedData.visibleTeachers} 
+                  workloads={teacherWorkloads}
+                  phaseStructures={phaseStructures}
+                  permissions={currentUserPermissions}
+                  sendNotification={sendNotification}
+                  allocations={scopedData.allocations}
+                  classGroups={scopedData.classGroups}
+                />;
     }
   };
 
@@ -712,6 +774,11 @@ const App: React.FC = () => {
       currentAcademicYear={currentAcademicYear}
       setCurrentAcademicYear={setCurrentAcademicYear}
       permissions={currentUserPermissions}
+      notifications={notifications}
+      setNotifications={setNotifications}
+      selectedPhaseId={selectedPhaseId}
+      setSelectedPhaseId={setSelectedPhaseId}
+      phaseStructures={phaseStructures}
     >
       {renderContent()}
     </Layout>

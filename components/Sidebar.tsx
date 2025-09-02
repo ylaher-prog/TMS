@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Page, Teacher, AcademicStructure } from '../types';
-import { ChartPieIcon, UsersIcon, ClipboardDocumentListIcon, CalendarDaysIcon, EyeIcon, ShoppingCartIcon, Cog6ToothIcon, ChatBubbleLeftRightIcon, CurrencyDollarIcon, TableCellsIcon, BriefcaseIcon } from './Icons';
+import { ChartPieIcon, UsersIcon, ClipboardDocumentListIcon, CalendarDaysIcon, EyeIcon, ShoppingCartIcon, Cog6ToothIcon, ChatBubbleLeftRightIcon, CurrencyDollarIcon, TableCellsIcon, BriefcaseIcon, ClipboardDocumentCheckIcon } from './Icons';
 import type { Permission } from '../permissions';
 import { hasPermission } from '../permissions';
 
@@ -58,6 +58,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, setActivePage, currentUse
     { id: 'academic-team', label: 'Academic Team', icon: <UsersIcon />, permission: 'view:academic-team' },
     { id: 'allocations', label: 'Allocations', icon: <ClipboardDocumentListIcon />, permission: 'view:allocations' },
     { id: 'timetable', label: 'Timetable', icon: <TableCellsIcon />, permission: 'view:timetable' },
+    { id: 'tasks', label: 'Tasks', icon: <ClipboardDocumentCheckIcon />, permission: 'view:tasks' },
   ];
   
   const hrNavItems = [

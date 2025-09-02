@@ -1,5 +1,6 @@
 
 
+
 import React, { useMemo, useState, useEffect } from 'react';
 import type { Teacher, ClassGroup, TeacherAllocation, Subject, AcademicStructure, TeacherWorkload, AllocationSettings, GeneralSettings, PhaseStructure, TimeGrid, TimetableHistoryEntry, Permission } from '../types';
 import { AllocationRole, AllocationStrategy, SubjectCategory } from '../types';
@@ -8,7 +9,7 @@ import AllocationCell from './AllocationCell';
 import AllocationTeacherDashboard from './AllocationTeacherDashboard';
 import TabButton from './TabButton';
 import MultiSelectFilter from './MultiSelectFilter';
-import { getSubjectPeriods } from '../App';
+import { getSubjectPeriods, getEffectiveLearnerCount } from '../utils';
 import ConfirmationModal from './ConfirmationModal';
 
 interface AllocationsProps {
@@ -44,18 +45,6 @@ const HIGHLIGHT_COLORS = [
     { dot: 'bg-lime-400', bg: 'bg-lime-100 dark:bg-lime-900/40' },
     { dot: 'bg-cyan-400', bg: 'bg-cyan-100 dark:bg-cyan-900/40' },
 ];
-
-const getEffectiveLearnerCount = (subject: Subject, group: ClassGroup, allSubjectsInGroup: Subject[]): number => {
-    if (subject.category === SubjectCategory.Elective && subject.electiveGroup) {
-        const competingSubjects = allSubjectsInGroup.filter(
-            s => s.category === SubjectCategory.Elective && s.electiveGroup === subject.electiveGroup && group.subjectIds.includes(s.id)
-        );
-        if (competingSubjects.length > 1) {
-            return Math.ceil(group.learnerCount / competingSubjects.length);
-        }
-    }
-    return group.learnerCount;
-};
 
 const Allocations: React.FC<AllocationsProps> = (props) => {
     const { teachers, setTeachers, classGroups, allocations, academicStructure, phaseStructures, setAllocations, teacherWorkloads, allocationSettings, generalSettings, timeGrids, timetableHistory, permissions, logAction } = props;
@@ -180,8 +169,7 @@ const Allocations: React.FC<AllocationsProps> = (props) => {
             
             if (qualifiedTeachers.length > 0) {
                 const subjectPeriods = getSubjectPeriods(subject, group.curriculum, group.grade, group.mode);
-                const allSubjectsInGroup = group.subjectIds.map(id => subjectMap.get(id)!).filter(Boolean);
-                const subjectLearners = getEffectiveLearnerCount(subject, group, allSubjectsInGroup);
+                const subjectLearners = getEffectiveLearnerCount(subject, group, subjectMap);
 
                 const getTeacherScore = (teacher: Teacher) => {
                     const current = tempWorkloads.get(teacher.id)!;
