@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
         host: '0.0.0.0',
         port: 5173,
         strictPort: false,
-        allowedHosts: 'all',
+        allowedHosts: ['.replit.dev'],
         hmr: {
           clientPort: 443
         }
