@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect, useMemo } from 'react';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
@@ -38,7 +36,8 @@ import { generateNotification } from './utils/notifications';
 const LOCAL_STORAGE_KEY = 'smt_app_data';
 
 interface AppState {
-  teachers: Teacher[];
+  // teachers are now loaded from the database
+  teachers?: Teacher[];
   academicStructure: AcademicStructure;
   phaseStructures: PhaseStructure[];
   classGroups: ClassGroup[];
@@ -57,13 +56,11 @@ interface AppState {
   taskBoards?: TaskBoard[];
   notifications?: Notification[];
   currentAcademicYear?: string;
-  // adminUsers is now obsolete and will be migrated to teachers
-  adminUsers?: any[];
   generatedTimetable?: any; // For migration
 }
 
 const App: React.FC = () => {
-  const loadState = (): AppState | null => {
+  const loadState = (): Omit<AppState, 'teachers'> | null => {
     try {
         const serializedState = localStorage.getItem(LOCAL_STORAGE_KEY);
         if (serializedState === null) return null;
@@ -103,40 +100,8 @@ const App: React.FC = () => {
         if (!state.taskBoards) state.taskBoards = MOCK_TASK_BOARDS;
         if (!state.notifications) state.notifications = [];
 
-        // One-time migration from adminUsers to teachers
-        if (state.adminUsers && state.adminUsers.length > 0) {
-            const adminPosition: {id: string, name: string} = state.academicStructure.positions.find(p => p.name === 'Super Admin') || { id: 'pos-super-admin', name: 'Super Admin' };
-            if (!state.academicStructure.positions.find(p => p.id === adminPosition.id)) {
-                state.academicStructure.positions.push(adminPosition as any);
-            }
-
-            const adminsAsTeachers: Teacher[] = state.adminUsers.map(admin => ({
-                id: admin.id,
-                fullName: admin.username.charAt(0).toUpperCase() + admin.username.slice(1),
-                email: `${admin.username}@qurtubaonline.co.za`,
-                avatarUrl: admin.avatarUrl,
-                employmentStatus: EmploymentStatus.Permanent,
-                startDate: new Date().toISOString().split('T')[0],
-                positionId: adminPosition.id,
-                maxLearners: 999,
-                maxPeriodsByMode: {},
-                specialties: [],
-                markingTasks: 0,
-                slas: { messageResponse: 24, markingTurnaround: 48 },
-                username: admin.username,
-                passwordHash: admin.passwordHash,
-            }));
-
-            // Add new teachers, avoiding duplicates by email
-            const existingEmails = new Set(state.teachers.map(t => t.email.toLowerCase()));
-            const newTeachersToAdd = adminsAsTeachers.filter(t => !existingEmails.has(t.email.toLowerCase()));
-            state.teachers.push(...newTeachersToAdd);
-            
-            // Mark adminUsers for deletion after loading
-            state.adminUsers = [];
-        }
-
-
+        // Teacher-related migrations are now obsolete as teacher data is in the database.
+        
         // One-time migration for observations to new formData structure
         if (state.observations && state.observations.length > 0 && (state.observations[0] as any).details !== undefined) {
             state.observations = state.observations.map((obs: any) => {
@@ -165,29 +130,6 @@ const App: React.FC = () => {
                 if (!s.category) s.category = SubjectCategory.Core;
                 if (!s.electiveGroup) s.electiveGroup = '';
                 return s;
-            });
-        }
-
-        // One-time migration for teachers to new workload limit structure
-        if (state.teachers) {
-            state.teachers = state.teachers.map((t: any) => {
-                if (t.livePeriods && !t.maxPeriodsByMode) {
-                    const maxPeriodsByMode: { [mode: string]: number } = {};
-                    if (t.livePeriods.max) maxPeriodsByMode['Live'] = t.livePeriods.max;
-                    if (t.flippedPeriods.max) {
-                        if (state.academicStructure.modes.includes('Flipped Morning')) maxPeriodsByMode['Flipped Morning'] = t.flippedPeriods.max;
-                        if (state.academicStructure.modes.includes('Flipped Afternoon')) maxPeriodsByMode['Flipped Afternoon'] = t.flippedPeriods.max;
-                    }
-                    const maxLearners = t.learners?.max || 250;
-                    const { livePeriods, flippedPeriods, learners, ...rest } = t;
-                    t = { ...rest, maxPeriodsByMode, maxLearners };
-                }
-                 if (!t.maxPeriodsByMode) t.maxPeriodsByMode = {};
-                 if (t.maxLearners === undefined) t.maxLearners = 250;
-                 if (t.workloadComments === undefined) t.workloadComments = ''; // New field migration
-                 if (t.employeeCode === undefined) t.employeeCode = '';
-                 if (t.salaryInfo === undefined) t.salaryInfo = undefined;
-                return t;
             });
         }
         
@@ -272,6 +214,8 @@ const App: React.FC = () => {
             state.timetableHistory = [];
         }
 
+        // Remove teachers from the loaded state, as they are now managed from DB
+        delete state.teachers;
 
         return state;
     } catch (err) {
@@ -283,7 +227,9 @@ const App: React.FC = () => {
   const savedState = loadState();
 
   const [activePage, setActivePage] = useState<Page>('dashboard');
-  const [teachers, setTeachers] = useState<Teacher[]>(savedState?.teachers || MOCK_TEACHERS);
+  const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
   const [academicStructure, setAcademicStructure] = useState<AcademicStructure>(savedState?.academicStructure || MOCK_ACADEMIC_STRUCTURE);
   const [phaseStructures, setPhaseStructures] = useState<PhaseStructure[]>(savedState?.phaseStructures || MOCK_PHASE_STRUCTURES);
   const [classGroups, setClassGroups] = useState<ClassGroup[]>(savedState?.classGroups || []);
@@ -325,6 +271,27 @@ const App: React.FC = () => {
     }
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
+
+  // Fetch teachers from the database on initial load
+  useEffect(() => {
+    const fetchTeachers = async () => {
+      try {
+        const response = await fetch('/api/teachers');
+        if (!response.ok) {
+          throw new Error(`API Error: ${response.statusText}`);
+        }
+        const data: Teacher[] = await response.json();
+        setTeachers(data);
+      } catch (error) {
+        console.error("Failed to fetch teachers from database, falling back to mock data.", error);
+        // Fallback to mock data if the API call fails
+        setTeachers(MOCK_TEACHERS);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchTeachers();
+  }, []);
 
   // --- Scoped Data By User Role & Academic Year ---
   const scopedData = useMemo(() => {
@@ -496,8 +463,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     try {
-        const stateToSave: AppState = {
-            teachers,
+        const stateToSave: Omit<AppState, 'teachers'> = {
             academicStructure,
             phaseStructures,
             classGroups,
@@ -526,7 +492,7 @@ const App: React.FC = () => {
             console.error("Could not save state to localStorage", err);
         }
     }
-  }, [teachers, academicStructure, phaseStructures, classGroups, allocations, leaveRequests, observations, procurementRequests, monitoringTemplates, parentQueries, allocationSettings, generalSettings, timeGrids, timeConstraints, timetableHistory, auditLog, taskBoards, notifications, currentAcademicYear]);
+  }, [academicStructure, phaseStructures, classGroups, allocations, leaveRequests, observations, procurementRequests, monitoringTemplates, parentQueries, allocationSettings, generalSettings, timeGrids, timeConstraints, timetableHistory, auditLog, taskBoards, notifications, currentAcademicYear]);
 
   const logAction = (action: string, details: string) => {
     if (!currentUser) return;
@@ -564,6 +530,17 @@ const App: React.FC = () => {
     localStorage.removeItem(LOCAL_STORAGE_KEY);
     window.location.reload();
   };
+
+  if (isLoading) {
+    return (
+        <div className="flex items-center justify-center min-h-screen bg-brand-bg dark:bg-brand-navy">
+            <div className="text-center">
+                <h1 className="text-3xl font-bold text-brand-navy dark:text-white tracking-wider">SMT</h1>
+                <p className="mt-2 text-brand-text-light dark:text-gray-400">Loading Application Data...</p>
+            </div>
+        </div>
+    );
+  }
 
   if (!currentUser) {
     return <LoginPage teachers={teachers} onLoginSuccess={handleLoginSuccess} />;
