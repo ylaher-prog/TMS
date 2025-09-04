@@ -81,7 +81,7 @@ const EmailSettingsManager: React.FC<EmailSettingsManagerProps> = ({ generalSett
                      <div className="p-4 bg-gray-50 dark:bg-slate-700/50 rounded-lg">
                         <div className="flex flex-col items-center justify-center text-center py-4">
                             <p className="font-semibold text-gray-800 dark:text-gray-200 mb-2">Connect your Google Account</p>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md mb-4">By signing in, you allow QTMS to open pre-filled Gmail compose windows using this account's address, streamlining your email workflow.</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 max-w-md mb-4">By signing in, you allow SMT to open pre-filled Gmail compose windows using this account's address, streamlining your email workflow.</p>
                             <button
                                 onClick={handleConnect}
                                 className="flex items-center gap-2 px-6 py-2.5 bg-white border border-gray-300 dark:bg-slate-800 dark:border-slate-600 rounded-md shadow-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"

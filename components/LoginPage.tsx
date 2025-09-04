@@ -32,7 +32,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ teachers, onLoginSuccess }) => {
     <div className="flex items-center justify-center min-h-screen bg-brand-bg dark:bg-brand-navy">
       <div className="w-full max-w-md p-8 space-y-8 bg-white dark:bg-slate-800/50 rounded-xl shadow-lg">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-brand-navy dark:text-white tracking-wider">QTMS</h1>
+          <h1 className="text-3xl font-bold text-brand-navy dark:text-white tracking-wider">SMT</h1>
           <p className="mt-2 text-brand-text-light dark:text-gray-400">Teacher Management System</p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleLogin}>

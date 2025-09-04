@@ -70,7 +70,7 @@ const TeacherReportModal: React.FC<TeacherReportModalProps> = (props) => {
                             <h1 className="text-3xl font-bold text-brand-navy">Comprehensive Teacher Report</h1>
                             <p className="text-brand-text-light">{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                         </div>
-                        <h2 className="text-2xl font-bold text-brand-primary tracking-wider">QTMS</h2>
+                        <h2 className="text-2xl font-bold text-brand-primary tracking-wider">SMT</h2>
                     </header>
                     
                     {/* Teacher Info */}

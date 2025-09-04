@@ -224,7 +224,7 @@ Focus on whether the workload is balanced, high, or low by comparing current num
                     <h1 className="text-3xl font-bold text-brand-navy">Workload Report</h1>
                     <p className="text-brand-text-light">{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 </div>
-                <h2 className="text-2xl font-bold text-brand-primary tracking-wider">QTMS</h2>
+                <h2 className="text-2xl font-bold text-brand-primary tracking-wider">SMT</h2>
             </header>
 
             {/* Teacher Info */}

@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useMemo } from 'react';
 import Layout from './components/Layout';
 import Dashboard from './components/Dashboard';
@@ -34,7 +35,7 @@ import { getUserPermissions, hasPermission } from './permissions';
 import { getSubjectPeriods } from './utils';
 import { generateNotification } from './utils/notifications';
 
-const LOCAL_STORAGE_KEY = 'qtms_app_data';
+const LOCAL_STORAGE_KEY = 'smt_app_data';
 
 interface AppState {
   teachers: Teacher[];

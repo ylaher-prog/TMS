@@ -1,7 +1,8 @@
 
 
+
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { MagnifyingGlassIcon, BellIcon, PencilSquareIcon, ArrowRightOnRectangleIcon, SunIcon, MoonIcon } from './Icons';
+import { MagnifyingGlassIcon, BellIcon, PencilSquareIcon, ArrowRightOnRectangleIcon, SunIcon, MoonIcon, ChevronDownIcon } from './Icons';
 // FIX: Import Notification type
 import type { Teacher, AcademicStructure, Notification, Permission, PhaseStructure } from '../types';
 import EditProfileModal from './EditProfileModal';
@@ -31,8 +32,13 @@ const Header: React.FC<HeaderProps> = (props) => {
   const [isDropdownOpen, setDropdownOpen] = useState(false);
   const [isEditProfileOpen, setEditProfileOpen] = useState(false);
   const [isNotificationOpen, setNotificationOpen] = useState(false);
+  const [isPhaseDropdownOpen, setPhaseDropdownOpen] = useState(false);
+  const [isYearDropdownOpen, setYearDropdownOpen] = useState(false);
+
   const dropdownRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const phaseDropdownRef = useRef<HTMLDivElement>(null);
+  const yearDropdownRef = useRef<HTMLDivElement>(null);
 
   const userPositionName = useMemo(() => {
     const position = academicStructure.positions.find(p => p.id === currentUser.positionId);
@@ -49,10 +55,22 @@ const Header: React.FC<HeaderProps> = (props) => {
       if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
         setNotificationOpen(false);
       }
+      if (phaseDropdownRef.current && !phaseDropdownRef.current.contains(event.target as Node)) {
+        setPhaseDropdownOpen(false);
+      }
+      if (yearDropdownRef.current && !yearDropdownRef.current.contains(event.target as Node)) {
+        setYearDropdownOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const selectedPhaseName = useMemo(() => {
+    if (selectedPhaseId === 'all') return 'All Phases';
+    const phase = phaseStructures.find(p => p.id === selectedPhaseId);
+    return phase ? phase.phase : 'All Phases';
+  }, [selectedPhaseId, phaseStructures]);
 
   return (
     <>
@@ -60,21 +78,35 @@ const Header: React.FC<HeaderProps> = (props) => {
         <div className="flex items-center gap-4">
             <h2 className="text-2xl font-bold text-brand-text-dark dark:text-white">{pageTitle}</h2>
              {hasPermission(permissions, 'view:header-phase-filter') && (
-                <div className="relative">
-                    <select
-                        value={selectedPhaseId}
-                        onChange={(e) => setSelectedPhaseId(e.target.value)}
-                        className="bg-gray-100 dark:bg-slate-700/80 border-transparent rounded-md text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-primary focus:bg-white dark:focus:bg-slate-600 py-2.5 px-3 appearance-none text-brand-text-dark dark:text-gray-200"
-                        aria-label="Select Phase"
+                <div className="relative" ref={phaseDropdownRef}>
+                    <button
+                        onClick={() => setPhaseDropdownOpen(p => !p)}
+                        className="flex items-center gap-2 bg-gray-100 dark:bg-slate-700/80 border-transparent rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-primary focus:bg-white dark:focus:bg-slate-600 py-2.5 px-4 text-brand-text-dark dark:text-gray-200"
                     >
-                        <option value="all">All Phases</option>
-                        {phaseStructures.map(p => (
-                            <option key={p.id} value={p.id}>{p.phase}</option>
-                        ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700 dark:text-gray-300">
-                        <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                    </div>
+                        <span>{selectedPhaseName}</span>
+                        <ChevronDownIcon className={`w-4 h-4 transition-transform ${isPhaseDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {isPhaseDropdownOpen && (
+                        <div className="absolute z-10 mt-2 w-56 origin-top-left bg-white dark:bg-slate-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none border dark:border-slate-700">
+                            <div className="py-1">
+                                <button
+                                    onClick={() => { setSelectedPhaseId('all'); setPhaseDropdownOpen(false); }}
+                                    className={`text-left w-full block px-4 py-2 text-sm ${selectedPhaseId === 'all' ? 'bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'} hover:bg-gray-100 dark:hover:bg-slate-700`}
+                                >
+                                    All Phases
+                                </button>
+                                {phaseStructures.map(p => (
+                                    <button
+                                        key={p.id}
+                                        onClick={() => { setSelectedPhaseId(p.id); setPhaseDropdownOpen(false); }}
+                                        className={`text-left w-full block px-4 py-2 text-sm ${selectedPhaseId === p.id ? 'bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'} hover:bg-gray-100 dark:hover:bg-slate-700`}
+                                    >
+                                        {p.phase}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>
@@ -112,21 +144,32 @@ const Header: React.FC<HeaderProps> = (props) => {
           </div>
           
            <div className="flex items-center gap-4 pl-2 border-l border-gray-200 dark:border-slate-700">
-                <div className="relative text-right">
-                    <span className="text-[10px] font-bold uppercase text-gray-400 dark:text-gray-500">Academic Year</span>
-                    <select
-                        value={currentAcademicYear}
-                        onChange={(e) => setCurrentAcademicYear(e.target.value)}
-                        className="bg-transparent text-sm font-semibold focus:outline-none py-0 pl-0 pr-6 appearance-none text-brand-text-dark dark:text-gray-200"
-                        aria-label="Select Academic Year"
+                <div className="relative" ref={yearDropdownRef}>
+                    <button
+                        onClick={() => setYearDropdownOpen(p => !p)}
+                        className="flex items-center gap-2 text-right bg-gray-100 dark:bg-slate-700/80 border-transparent rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-primary focus:bg-white dark:focus:bg-slate-600 py-1.5 px-3"
                     >
-                        {(academicStructure.academicYears || []).sort().reverse().map(year => (
-                            <option key={year} value={year}>{year}</option>
-                        ))}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 top-3 flex items-center text-gray-700 dark:text-gray-300">
-                        <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-                    </div>
+                        <div>
+                            <span className="text-[10px] font-bold uppercase text-gray-400 dark:text-gray-500 block leading-tight">Academic Year</span>
+                            <span className="text-brand-text-dark dark:text-gray-200 font-bold block leading-tight">{currentAcademicYear}</span>
+                        </div>
+                        <ChevronDownIcon className={`w-4 h-4 transition-transform text-gray-500 dark:text-gray-400 ${isYearDropdownOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    {isYearDropdownOpen && (
+                        <div className="absolute z-10 mt-2 w-32 right-0 origin-top-right bg-white dark:bg-slate-800 rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none border dark:border-slate-700">
+                            <div className="py-1">
+                                {(academicStructure.academicYears || []).sort().reverse().map(year => (
+                                    <button
+                                        key={year}
+                                        onClick={() => { setCurrentAcademicYear(year); setYearDropdownOpen(false); }}
+                                        className={`text-left w-full block px-4 py-2 text-sm ${currentAcademicYear === year ? 'bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white' : 'text-gray-700 dark:text-gray-300'} hover:bg-gray-100 dark:hover:bg-slate-700`}
+                                    >
+                                        {year}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="relative" ref={dropdownRef}>
